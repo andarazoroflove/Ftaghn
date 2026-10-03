@@ -1,0 +1,111 @@
+# ==============================================================================
+# Ftaghn: Cosmic Horror Ataxx - Comprehensive Git Ignore
+# Excludes all executables, binaries, disk images, and release packages
+# ==============================================================================
+
+# Release and Build Folders
+release/
+build/
+bin/
+out/
+dist/
+target/
+**/release/
+**/build/
+**/bin/
+wince/release/
+wince/build/
+win95/release/
+gbc/release/
+solaris/release/
+mac/release/
+mac/build/
+mac68k/release/
+mac68k/build/
+
+# Operating System & Editor Metadata
+.DS_Store
+._*
+.finf/
+.rsrc/
+Thumbs.db
+ehthumbs.db
+.vscode/
+.idea/
+
+# Package Management & Dependencies
+node_modules/
+.npm/
+
+# Firebase & Deployment Artifacts
+.firebase/
+.firebaserc
+firebase.json
+firebase*.json
+deployed.html
+*.log
+npm-debug.log*
+yarn-debug.log*
+firebase-debug.log*
+
+# C / C++ / Compiler Object Files & Libraries
+*.o
+*.obj
+*.so
+*.so.*
+*.a
+*.lib
+*.dll
+*.exe
+*.EXE
+*.out
+*.elf
+solaris/*.o
+solaris/src/*.o
+solaris/tools/stubs/32/
+solaris/tools/stubs/64/
+win95/src/*.o
+
+# Nintendo Game Boy / GBDK Artifacts
+*.gb
+*.gbc
+*.GBC
+*.ihx
+*.lst
+*.sym
+gbc/src/*.asm
+gbc/src/*.lst
+gbc/src/*.o
+gbc/src/*.sym
+gbc/src/*.ihx
+gbc/tools/gbdk/
+
+# Classic Mac Artifacts & Disk Images
+*.dsk
+*.DSK
+*.img
+*.IMG
+*.bin
+*.BIN
+*.hqx
+*.HQX
+*.app/
+*.APPL
+*.ad
+mac_se/Ftaghn Ataxx
+mac_se/*.dsk
+mac_se/*.bin
+mac_se/*.hqx
+mac_se/machfs/__pycache__/
+
+# Compressed Archives
+*.zip
+*.tar.gz
+*.tgz
+*.7z
+*.rar
+
+# Python Artifacts
+__pycache__/
+*.py[cod]
+*$py.class

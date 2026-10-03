@@ -1,0 +1,89 @@
+#include <windows.h>
+#include "resource.h"
+
+/* Main Menu */
+IDR_MAIN_MENU MENU
+BEGIN
+    POPUP "&Game"
+    BEGIN
+        MENUITEM "&New Game\tF2",                ID_GAME_NEW
+        MENUITEM "&Options & Names...\tF4",      ID_GAME_OPTIONS
+        MENUITEM "&Mute Sound/Music\tF3",        ID_GAME_MUTE
+        MENUITEM "Reset to &Defaults",           ID_GAME_RESET_DEFAULTS
+        MENUITEM SEPARATOR
+        MENUITEM "E&xit",                        ID_GAME_EXIT
+    END
+    POPUP "&Difficulty"
+    BEGIN
+        MENUITEM "&Simple (Easy)",               ID_DIFF_EASY
+        MENUITEM "&Mortal (Medium)",             ID_DIFF_MEDIUM
+        MENUITEM "&Elder Godlike (Hard)",        ID_DIFF_HARD
+    END
+    POPUP "&Obstacles"
+    BEGIN
+        MENUITEM "&None",                        ID_OBS_NONE
+        MENUITEM "&Some (4-8)",                  ID_OBS_SOME
+        MENUITEM "&More (12-20)",                ID_OBS_MORE
+        MENUITEM "&Madness (20-24)",             ID_OBS_MADNESS
+    END
+    POPUP "&Turn Timer"
+    BEGIN
+        MENUITEM "&Unlimited",                   ID_TIMER_UNLIMITED
+        MENUITEM "&30 Seconds",                  ID_TIMER_30
+        MENUITEM "&15 Seconds",                  ID_TIMER_15
+        MENUITEM "&5 Seconds",                   ID_TIMER_5
+    END
+    POPUP "&Help"
+    BEGIN
+        MENUITEM "&How to Play",                 ID_HELP_RULES
+        MENUITEM "&Tome of Forbidden Knowledge\tF1", ID_HELP_TOME
+        MENUITEM SEPARATOR
+        MENUITEM "&About Ftaghn...",             ID_HELP_ABOUT
+    END
+END
+
+/* Options Dialog */
+IDD_OPTIONS DIALOG DISCARDABLE  0, 0, 240, 160
+STYLE DS_MODALFRAME | WS_POPUP | WS_CAPTION | WS_SYSMENU
+CAPTION "Ftaghn Game Options"
+FONT 8, "MS Sans Serif"
+BEGIN
+    GROUPBOX        "Player Names",-1,10,10,220,65
+    LTEXT           "Red Player (You):",-1,20,25,75,10
+    EDITTEXT        IDC_RED_NAME,100,23,120,13,ES_AUTOHSCROLL
+    LTEXT           "Blue Player (AI):",-1,20,45,75,10
+    EDITTEXT        IDC_BLUE_NAME,100,43,120,13,ES_AUTOHSCROLL
+    LTEXT           "(Try Elder God names like Hastur, Cthulhu, etc.)",-1,20,60,200,10
+
+    GROUPBOX        "Game Settings",-1,10,80,220,45
+    LTEXT           "Tip: Select Difficulty, Obstacles, and Turn Timer from the menu bar.",-1,20,95,200,20
+
+    DEFPUSHBUTTON   "Play Ftaghn",IDOK,60,135,55,16
+    PUSHBUTTON      "Cancel",IDCANCEL,125,135,55,16
+END
+
+/* Tome of Forbidden Knowledge Dialog */
+IDD_TOME DIALOG DISCARDABLE  0, 0, 320, 240
+STYLE DS_MODALFRAME | WS_POPUP | WS_CAPTION | WS_SYSMENU
+CAPTION "Tome of Forbidden Knowledge - Elder God Secrets"
+FONT 8, "MS Sans Serif"
+BEGIN
+    LTEXT           "Ancient names unlock elder powers when set as Player 1 or 2:",-1,10,8,300,12
+    EDITTEXT        IDC_TOME_TEXT,10,22,300,185,ES_MULTILINE | ES_AUTOVSCROLL | ES_READONLY | WS_VSCROLL | WS_BORDER
+    DEFPUSHBUTTON   "Close",IDOK,130,215,60,16
+END
+
+/* About Dialog */
+IDD_ABOUT DIALOG DISCARDABLE  0, 0, 220, 110
+STYLE DS_MODALFRAME | WS_POPUP | WS_CAPTION | WS_SYSMENU
+CAPTION "About Ftaghn"
+FONT 8, "MS Sans Serif"
+BEGIN
+    CTEXT           "Ftaghn - Cosmic Horror Ataxx",-1,10,15,200,12
+    CTEXT           "Windows 95 Edition",-1,10,30,200,10
+    CTEXT           "Engineered for Intel 486 & 12MB RAM",-1,10,42,200,10
+    CTEXT           "8-Bit Paletted GDI Graphics & 8-Bit PCM Audio",-1,10,54,200,10
+    CTEXT           "Based on original game by the Cult of Ataxx",-1,10,66,200,10
+    DEFPUSHBUTTON   "OK",IDOK,85,85,50,15
+END
+
