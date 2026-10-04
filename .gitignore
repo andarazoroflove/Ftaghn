@@ -92,6 +92,8 @@ gbc/tools/gbdk/
 *.app/
 *.APPL
 *.ad
+*.prc
+*.PRC
 mac_se/Ftaghn Ataxx
 mac_se/*.dsk
 mac_se/*.bin
