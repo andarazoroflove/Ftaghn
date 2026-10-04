@@ -8,6 +8,7 @@ extern "C" {
 #endif
 
 void Sound_Init(void);
+void Sound_Poll(void);
 void Sound_PlaySFX(const char *rel_filename);
 void Sound_PlayBGM(const char *rel_filename);
 void Sound_StopBGM(void);

@@ -6,6 +6,7 @@
 
 #define TIMER_ID_SEC 1
 #define TIMER_ID_AI  2
+#define TIMER_ID_SND 3
 
 static HINSTANCE s_hInstance = NULL;
 static HWND      s_hwndMain  = NULL;
@@ -46,6 +47,7 @@ static void LogDebug(const char *msg) {
 }
 
 static void UpdateScreen(HWND hwnd) {
+    Sound_Poll();
     Render_DrawFrame();
     if (s_tome_open) {
         Render_DrawTomeModal(s_tome_index);
@@ -158,9 +160,9 @@ LRESULT CALLBACK WndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam) {
                 Game_HandleClick(r, c);
                 UpdateScreen(hwnd);
 
-                /* If AI's turn, schedule fast AI trigger */
+                /* If AI's turn, schedule AI trigger with comfortable 600ms delay so player's move SFX is heard */
                 if (g_game.current_player == CELL_BLUE && !g_game.game_over) {
-                    SetTimer(hwnd, TIMER_ID_AI, 250, NULL);
+                    SetTimer(hwnd, TIMER_ID_AI, 600, NULL);
                 }
             }
             return 0;
@@ -189,6 +191,22 @@ LRESULT CALLBACK WndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam) {
             }
 
             switch (wParam) {
+                case VK_ESCAPE:
+                    if (g_game.has_selected) {
+                        g_game.has_selected = FALSE;
+                        g_game.selected_r = -1;
+                        g_game.selected_c = -1;
+                        UpdateScreen(hwnd);
+                    } else {
+                        /* Escape on main board with nothing selected cleanly exits the game */
+                        PostMessage(hwnd, WM_CLOSE, 0, 0);
+                    }
+                    break;
+                case 'Q':
+                case 'q':
+                    /* 'Q' key also cleanly quits */
+                    PostMessage(hwnd, WM_CLOSE, 0, 0);
+                    break;
                 case 'N':
                 case 'n':
                     Game_ResetGame();
@@ -212,14 +230,6 @@ LRESULT CALLBACK WndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam) {
                     Sound_ToggleMute();
                     UpdateScreen(hwnd);
                     break;
-                case VK_ESCAPE:
-                    if (g_game.has_selected) {
-                        g_game.has_selected = FALSE;
-                        g_game.selected_r = -1;
-                        g_game.selected_c = -1;
-                        UpdateScreen(hwnd);
-                    }
-                    break;
             }
             return 0;
         }
@@ -235,6 +245,8 @@ LRESULT CALLBACK WndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam) {
                     Game_MakeAIMove();
                     UpdateScreen(hwnd);
                 }
+            } else if (wParam == TIMER_ID_SND) {
+                Sound_Poll();
             }
             return 0;
         }
@@ -246,6 +258,7 @@ LRESULT CALLBACK WndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam) {
         case WM_DESTROY: {
             KillTimer(hwnd, TIMER_ID_SEC);
             KillTimer(hwnd, TIMER_ID_AI);
+            KillTimer(hwnd, TIMER_ID_SND);
             Render_Cleanup();
             Sound_Cleanup();
             PostQuitMessage(0);
@@ -332,10 +345,11 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPWSTR lpCmdLin
     UpdateScreen(hwnd);
     LogDebug("ShowWindow and initial UpdateScreen OK\r\n");
 
-    /* 6. Start game loop timer & background audio */
+    /* 6. Start game loop timer, 100ms sound poll timer & background audio loop */
     SetTimer(hwnd, TIMER_ID_SEC, 1000, NULL);
+    SetTimer(hwnd, TIMER_ID_SND, 100, NULL);
     Sound_PlayBGM("bg_music.wav");
-    LogDebug("Audio & Timer started\r\n");
+    LogDebug("Audio & Timers started\r\n");
 
     /* 7. Main message dispatch loop */
     LogDebug("Entering message loop...\r\n");
