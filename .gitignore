@@ -22,6 +22,8 @@ mac/release/
 mac/build/
 mac68k/release/
 mac68k/build/
+axim_x50v/release/
+axim_x50v/build/
 
 # Operating System & Editor Metadata
 .DS_Store

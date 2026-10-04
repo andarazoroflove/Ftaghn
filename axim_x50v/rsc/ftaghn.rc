@@ -1,0 +1,12 @@
+#include <windows.h>
+
+#define IDI_MAIN_ICON 101
+
+IDI_MAIN_ICON ICON "axim_x50v/rsc/ftaghn.ico"
+
+// Pocket PC 2003SE / Windows Mobile 5.0 High-DPI VGA Awareness Resource
+#define HI_RES_AWARE 24
+HI_RES_AWARE CEUX
+BEGIN
+    0x0001
+END

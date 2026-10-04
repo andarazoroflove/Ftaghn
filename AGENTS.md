@@ -16,6 +16,7 @@
 - `mac_se/`: Macintosh SE System 6/7 edition (standalone 68000 assembly, custom Python assembler, and HFS disk image builder).
 - `solaris/`: Sun Solaris 10 / SunOS 5.10 SPARC V8+/V9 edition using X11 and `/dev/audio`.
 - `palmos/`: Palm T|X Palm OS Garnet 5.4.9 edition (320x480 HVGA, prc-tools-remix, PACE 68k, Tome of Forbidden Lore, Sound Manager).
+- `axim_x50v/`: Dell Axim X50v / X51v Pocket PC 2003SE / WM5 edition (Intel XScale PXA270 624 MHz, Intel 2700G Marathon, 480x640 VGA Portrait, HI_RES_AWARE, WaveAudio).
 
 ## Guidelines
 - Maintain documentation and comment integrity across all legacy and retro C/ASM source files.
