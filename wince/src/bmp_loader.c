@@ -2,7 +2,7 @@
 #include "freestanding.h"
 
 HBITMAP BMP_LoadFromFileW(const WCHAR *filepath, int *out_w, int *out_h) {
-    if (!filepath) return NULL;
+    if (!filepath || filepath[0] == L'\0') return NULL;
 
     HANDLE hFile = CreateFileW(filepath, GENERIC_READ, FILE_SHARE_READ, NULL, OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, NULL);
     if (hFile == INVALID_HANDLE_VALUE) {
@@ -31,17 +31,21 @@ HBITMAP BMP_LoadFromFileW(const WCHAR *filepath, int *out_w, int *out_h) {
     int height = (bih.biHeight < 0) ? -bih.biHeight : bih.biHeight;
     int bitCount = bih.biBitCount;
 
-    int numColors = 0;
-    if (bitCount <= 8) {
-        numColors = (bih.biClrUsed > 0) ? (int)bih.biClrUsed : (1 << bitCount);
-    }
-
-    DWORD bmiSize = sizeof(BITMAPINFOHEADER) + numColors * sizeof(RGBQUAD);
-    BITMAPINFO *pbmi = (BITMAPINFO *)LocalAlloc(LMEM_FIXED | LMEM_ZEROINIT, bmiSize);
-    if (!pbmi) {
+    if (width <= 0 || width > 1024 || height <= 0 || height > 1024) {
         CloseHandle(hFile);
         return NULL;
     }
+
+    int numColors = 0;
+    if (bitCount <= 8) {
+        numColors = (bih.biClrUsed > 0) ? (int)bih.biClrUsed : (1 << bitCount);
+        if (numColors > 256) numColors = 256;
+    }
+
+    /* Fixed stack buffer for BITMAPINFO + palette (up to 256 colors) */
+    uint8_t bmi_buf[sizeof(BITMAPINFOHEADER) + 256 * sizeof(RGBQUAD)];
+    memset(bmi_buf, 0, sizeof(bmi_buf));
+    BITMAPINFO *pbmi = (BITMAPINFO *)bmi_buf;
 
     pbmi->bmiHeader = bih;
     if (numColors > 0) {
@@ -53,7 +57,7 @@ HBITMAP BMP_LoadFromFileW(const WCHAR *filepath, int *out_w, int *out_h) {
     void *pBits = NULL;
     HDC hdc = GetDC(NULL);
     HBITMAP hBitmap = CreateDIBSection(hdc, pbmi, DIB_RGB_COLORS, &pBits, NULL, 0);
-    ReleaseDC(NULL, hdc);
+    if (hdc) ReleaseDC(NULL, hdc);
 
     if (hBitmap && pBits) {
         DWORD rowStride = ((width * bitCount + 31) / 32) * 4;
@@ -66,14 +70,13 @@ HBITMAP BMP_LoadFromFileW(const WCHAR *filepath, int *out_w, int *out_h) {
         hBitmap = NULL;
     }
 
-    LocalFree(pbmi);
     CloseHandle(hFile);
     return hBitmap;
 }
 
 HBITMAP BMP_LoadFromFileA(const char *filepath, int *out_w, int *out_h) {
-    if (!filepath) return NULL;
+    if (!filepath || filepath[0] == '\0') return NULL;
     WCHAR wpath[MAX_PATH];
-    MultiByteToWideChar(CP_ACP, 0, filepath, -1, wpath, MAX_PATH);
+    ascii_to_wide(wpath, filepath, MAX_PATH);
     return BMP_LoadFromFileW(wpath, out_w, out_h);
 }

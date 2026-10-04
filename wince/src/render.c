@@ -3,9 +3,13 @@
 #include "bmp_loader.h"
 #include "freestanding.h"
 
+#undef SetRect
+#define SetRect(prc, l, t, r, b) do { (prc)->left = (l); (prc)->top = (t); (prc)->right = (r); (prc)->bottom = (b); } while(0)
+
 static HDC s_mem_dc = NULL;
 static HBITMAP s_mem_bmp = NULL;
 static HBITMAP s_old_bmp = NULL;
+static void   *s_dib_bits = NULL;
 
 static HBITMAP s_bg_bmp = NULL;
 static char s_loaded_bg[MAX_PATH] = "";
@@ -31,7 +35,11 @@ static HFONT CreateFontWCE(int height, int weight) {
     lf.lfWeight = weight;
     lf.lfCharSet = DEFAULT_CHARSET;
     lstrcpyW(lf.lfFaceName, L"Tahoma");
-    return CreateFontIndirectW(&lf);
+    HFONT hf = CreateFontIndirectW(&lf);
+    if (!hf) {
+        hf = (HFONT)GetStockObject(SYSTEM_FONT);
+    }
+    return hf;
 }
 
 static void GetBoardLayout(int *out_ox, int *out_oy, int *out_cell_size) {
@@ -73,6 +81,9 @@ int Render_GetButtonClicked(int x, int y) {
 }
 
 void Render_LoadCurrentBackground(void) {
+    if (g_game.current_bg_filename[0] == '\0') {
+        return;
+    }
     if (strcmp(s_loaded_bg, g_game.current_bg_filename) == 0 && s_bg_bmp != NULL) {
         return;
     }
@@ -95,26 +106,72 @@ void Render_LoadCurrentBackground(void) {
         if (last_slash >= 0) exe_path[last_slash + 1] = L'\0';
 
         WCHAR wrel[MAX_PATH];
-        MultiByteToWideChar(CP_ACP, 0, g_game.current_bg_filename, -1, wrel, MAX_PATH);
+        ascii_to_wide(wrel, g_game.current_bg_filename, MAX_PATH);
         lstrcpyW(full_bg_path, exe_path);
         lstrcatW(full_bg_path, wrel);
     } else {
         WCHAR wrel[MAX_PATH];
-        MultiByteToWideChar(CP_ACP, 0, g_game.current_bg_filename, -1, wrel, MAX_PATH);
+        ascii_to_wide(wrel, g_game.current_bg_filename, MAX_PATH);
         lstrcpyW(full_bg_path, L"\\Storage Card\\Ftaghn\\");
         lstrcatW(full_bg_path, wrel);
     }
 
     s_bg_bmp = BMP_LoadFromFileW(full_bg_path, NULL, NULL);
-    strncpy(s_loaded_bg, g_game.current_bg_filename, MAX_PATH - 1);
+    strncpy(s_loaded_bg, g_game.current_bg_filename, sizeof(s_loaded_bg) - 1);
+    s_loaded_bg[sizeof(s_loaded_bg) - 1] = '\0';
 }
 
 void Render_Init(HWND hwnd) {
     HDC screen_dc = GetDC(hwnd);
+    if (!screen_dc) return;
 
     s_mem_dc = CreateCompatibleDC(screen_dc);
-    s_mem_bmp = CreateCompatibleBitmap(screen_dc, SCREEN_WIDTH, SCREEN_HEIGHT);
-    s_old_bmp = (HBITMAP)SelectObject(s_mem_dc, s_mem_bmp);
+
+    /* Allocate DIBSection backbuffer for Jornada 720 (640x240 16-bit 5:6:5 / 5:5:5) */
+    struct {
+        BITMAPINFOHEADER bmiHeader;
+        DWORD bmiColors[3];
+    } bmi16;
+    memset(&bmi16, 0, sizeof(bmi16));
+    bmi16.bmiHeader.biSize = sizeof(BITMAPINFOHEADER);
+    bmi16.bmiHeader.biWidth = SCREEN_WIDTH;
+    bmi16.bmiHeader.biHeight = -SCREEN_HEIGHT; /* Top-down */
+    bmi16.bmiHeader.biPlanes = 1;
+    bmi16.bmiHeader.biBitCount = 16;
+    bmi16.bmiHeader.biCompression = BI_BITFIELDS;
+    bmi16.bmiColors[0] = 0xF800; /* Red */
+    bmi16.bmiColors[1] = 0x07E0; /* Green */
+    bmi16.bmiColors[2] = 0x001F; /* Blue */
+
+    s_mem_bmp = CreateDIBSection(screen_dc, (BITMAPINFO *)&bmi16, DIB_RGB_COLORS, &s_dib_bits, NULL, 0);
+    if (!s_mem_bmp) {
+        /* Fallback: bottom-up 16-bit 5:5:5 BI_RGB */
+        BITMAPINFOHEADER bmi555;
+        memset(&bmi555, 0, sizeof(bmi555));
+        bmi555.biSize = sizeof(BITMAPINFOHEADER);
+        bmi555.biWidth = SCREEN_WIDTH;
+        bmi555.biHeight = SCREEN_HEIGHT;
+        bmi555.biPlanes = 1;
+        bmi555.biBitCount = 16;
+        bmi555.biCompression = BI_RGB;
+        s_mem_bmp = CreateDIBSection(screen_dc, (BITMAPINFO *)&bmi555, DIB_RGB_COLORS, &s_dib_bits, NULL, 0);
+    }
+    if (!s_mem_bmp) {
+        /* Fallback: bottom-up 24-bit BI_RGB */
+        BITMAPINFOHEADER bmi24;
+        memset(&bmi24, 0, sizeof(bmi24));
+        bmi24.biSize = sizeof(BITMAPINFOHEADER);
+        bmi24.biWidth = SCREEN_WIDTH;
+        bmi24.biHeight = SCREEN_HEIGHT;
+        bmi24.biPlanes = 1;
+        bmi24.biBitCount = 24;
+        bmi24.biCompression = BI_RGB;
+        s_mem_bmp = CreateDIBSection(screen_dc, (BITMAPINFO *)&bmi24, DIB_RGB_COLORS, &s_dib_bits, NULL, 0);
+    }
+
+    if (s_mem_dc && s_mem_bmp) {
+        s_old_bmp = (HBITMAP)SelectObject(s_mem_dc, s_mem_bmp);
+    }
 
     ReleaseDC(hwnd, screen_dc);
 
@@ -130,7 +187,9 @@ void Render_Init(HWND hwnd) {
     s_font_grim[3] = CreateFontWCE(10, FW_NORMAL);
     s_font_grim[4] = CreateFontWCE(10, FW_NORMAL);
 
-    Render_LoadCurrentBackground();
+    if (g_game.current_bg_filename[0] != '\0') {
+        Render_LoadCurrentBackground();
+    }
 }
 
 void Render_Cleanup(void) {
@@ -304,18 +363,12 @@ void Render_Paint(HWND hwnd, HDC hdc) {
                     Ellipse(s_mem_dc, mid_x - 4, mid_y - 4, mid_x + 5, mid_y + 5);
                     DeleteObject(clone_br);
                 } else if (mtype == MOVE_LEAP) {
-                    /* Purple Warp Diamond */
+                    /* Purple Warp Indicator */
                     HBRUSH leap_br = CreateSolidBrush(RGB(168, 85, 247));
                     SelectObject(s_mem_dc, leap_br);
                     int mid_x = cx + cell_size / 2;
                     int mid_y = cy + cell_size / 2;
-                    POINT pts[4] = {
-                        { mid_x, mid_y - 5 },
-                        { mid_x + 5, mid_y },
-                        { mid_x, mid_y + 5 },
-                        { mid_x - 5, mid_y }
-                    };
-                    Polygon(s_mem_dc, pts, 4);
+                    RoundRect(s_mem_dc, mid_x - 4, mid_y - 4, mid_x + 5, mid_y + 5, 2, 2);
                     DeleteObject(leap_br);
                 }
             }
@@ -452,7 +505,7 @@ void Render_Paint(HWND hwnd, HDC hdc) {
     int gy = 70;
     for (int i = 0; i < g_game.grimoire_count && i < GRIMOIRE_MAX; i++) {
         WCHAR wline[128];
-        MultiByteToWideChar(CP_ACP, 0, g_game.grimoire[i].text, -1, wline, 128);
+        ascii_to_wide(wline, g_game.grimoire[i].text, 128);
 
         SetTextColor(s_mem_dc, s_grim_colors[i]);
         SelectObject(s_mem_dc, s_font_grim[i]);
@@ -488,7 +541,7 @@ void Render_Paint(HWND hwnd, HDC hdc) {
 
     /* Deity Description Line */
     WCHAR wdesc[128];
-    MultiByteToWideChar(CP_ACP, 0, sec->description, -1, wdesc, 128);
+    ascii_to_wide(wdesc, sec->description, 128);
     SetTextColor(s_mem_dc, RGB(180, 185, 200));
     SelectObject(s_mem_dc, s_font_hud);
     RECT desc_rc;

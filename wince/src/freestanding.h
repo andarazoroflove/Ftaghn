@@ -34,6 +34,8 @@ int vsnprintf(char *buf, size_t size, const char *fmt, va_list args);
 int _snprintf(char *buf, size_t size, const char *fmt, ...);
 int _vsnprintf(char *buf, size_t size, const char *fmt, va_list args);
 
+void ascii_to_wide(wchar_t *dest, const char *src, int max_chars);
+
 #ifdef __cplusplus
 }
 #endif

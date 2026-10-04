@@ -4,6 +4,9 @@
 #include "sound.h"
 #include "freestanding.h"
 
+#undef SetRect
+#define SetRect(prc, l, t, r, b) do { (prc)->left = (l); (prc)->top = (t); (prc)->right = (r); (prc)->bottom = (b); } while(0)
+
 #define TIMER_ID_SEC 1
 #define TIMER_ID_AI  2
 
@@ -19,26 +22,46 @@ static HFONT s_tome_font_name  = NULL;
 static HFONT s_tome_font_desc  = NULL;
 static HFONT s_tome_font_btn   = NULL;
 
-static void InitTomeFonts(void) {
+static void LogDebug(const char *msg) {
+    WCHAR path[MAX_PATH];
+    DWORD len = GetModuleFileNameW(NULL, path, MAX_PATH);
+    if (len > 0) {
+        int slash = -1;
+        for (DWORD i = 0; i < len; i++) {
+            if (path[i] == L'\\' || path[i] == L'/') slash = (int)i;
+        }
+        if (slash >= 0) path[slash + 1] = L'\0';
+        lstrcatW(path, L"debug.txt");
+        HANDLE hFile = CreateFileW(path, GENERIC_WRITE, FILE_SHARE_READ, NULL, OPEN_ALWAYS, FILE_ATTRIBUTE_NORMAL, NULL);
+        if (hFile != INVALID_HANDLE_VALUE) {
+            SetFilePointer(hFile, 0, NULL, FILE_END);
+            DWORD written = 0;
+            DWORD l = (DWORD)strlen(msg);
+            WriteFile(hFile, msg, l, &written, NULL);
+            CloseHandle(hFile);
+        }
+    }
+}
+
+static HFONT CreateFontSafe(int height, int weight) {
     LOGFONTW lf;
     memset(&lf, 0, sizeof(lf));
-    lf.lfHeight = 15;
-    lf.lfWeight = FW_BOLD;
+    lf.lfHeight = height;
+    lf.lfWeight = weight;
     lf.lfCharSet = DEFAULT_CHARSET;
     lstrcpyW(lf.lfFaceName, L"Tahoma");
-    s_tome_font_title = CreateFontIndirectW(&lf);
+    HFONT hf = CreateFontIndirectW(&lf);
+    if (!hf) {
+        hf = (HFONT)GetStockObject(SYSTEM_FONT);
+    }
+    return hf;
+}
 
-    lf.lfHeight = 14;
-    lf.lfWeight = FW_BOLD;
-    s_tome_font_name = CreateFontIndirectW(&lf);
-
-    lf.lfHeight = 12;
-    lf.lfWeight = FW_NORMAL;
-    s_tome_font_desc = CreateFontIndirectW(&lf);
-
-    lf.lfHeight = 11;
-    lf.lfWeight = FW_BOLD;
-    s_tome_font_btn = CreateFontIndirectW(&lf);
+static void InitTomeFonts(void) {
+    s_tome_font_title = CreateFontSafe(15, FW_BOLD);
+    s_tome_font_name  = CreateFontSafe(14, FW_BOLD);
+    s_tome_font_desc  = CreateFontSafe(12, FW_NORMAL);
+    s_tome_font_btn   = CreateFontSafe(11, FW_BOLD);
 }
 
 static void CleanupTomeFonts(void) {
@@ -118,7 +141,7 @@ static void DrawTomeModal(HDC hdc) {
     DeleteObject(desc_pen);
 
     WCHAR wsec_desc[256];
-    MultiByteToWideChar(CP_ACP, 0, sec->description, -1, wsec_desc, 256);
+    ascii_to_wide(wsec_desc, sec->description, 256);
     SetTextColor(hdc, RGB(220, 225, 240));
     SelectObject(hdc, s_tome_font_desc);
     RECT d_rc;
@@ -221,17 +244,9 @@ static BOOL HandleTomeClick(HWND hwnd, int x, int y) {
 
 LRESULT CALLBACK WndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam) {
     switch (msg) {
-        case WM_CREATE: {
+        case WM_CREATE:
             s_hwndMain = hwnd;
-            InitTomeFonts();
-            Sound_Init();
-            Render_Init(hwnd);
-            Game_Init();
-
-            SetTimer(hwnd, TIMER_ID_SEC, 1000, NULL);
-            Sound_PlayBGM("bg_music.wav");
             return 0;
-        }
 
         case WM_PAINT: {
             PAINTSTRUCT ps;
@@ -386,21 +401,44 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPWSTR lpCmdLin
     (void)lpCmdLine;
     s_hInstance = hInstance;
 
+    LogDebug("=== Ftaghn Ataxx Jornada 720 Starting ===\r\n");
+
+    /* 1. Initialize logic & sound subsystems before creating window */
+    Game_Init();
+    LogDebug("[1/5] Game_Init OK\r\n");
+
+    Sound_Init();
+    LogDebug("[2/5] Sound_Init OK\r\n");
+
+    InitTomeFonts();
+    LogDebug("[3/5] InitTomeFonts OK\r\n");
+
+    /* 2. Register Window Class */
+    const wchar_t szClassName[] = L"FtaghnAtaxxCE";
     WNDCLASSW wc;
     memset(&wc, 0, sizeof(wc));
+    wc.style         = CS_HREDRAW | CS_VREDRAW;
     wc.lpfnWndProc   = WndProc;
     wc.hInstance     = hInstance;
     wc.hbrBackground = (HBRUSH)GetStockObject(BLACK_BRUSH);
-    wc.lpszClassName = L"FtaghnAtaxxCE";
+    wc.lpszClassName = szClassName;
 
     if (!RegisterClassW(&wc)) {
-        return 1;
+        DWORD err = GetLastError();
+        if (err != 1410) { /* 1410 = ERROR_CLASS_ALREADY_EXISTS */
+            WCHAR errBuf[80];
+            wsprintfW(errBuf, L"RegisterClass failed: err=%lu", err);
+            LogDebug("FATAL: RegisterClass failed\r\n");
+            MessageBoxW(NULL, errBuf, L"Ftaghn Error", MB_OK);
+            return 1;
+        }
     }
+    LogDebug("[4/5] RegisterClass OK\r\n");
 
-    /* HP Jornada 720 Screen is 640x240 */
+    /* 3. Create Fullscreen 640x240 Window (Try WS_EX_TOPMOST first) */
     HWND hwnd = CreateWindowExW(
-        0,
-        L"FtaghnAtaxxCE",
+        WS_EX_TOPMOST,
+        szClassName,
         L"Ftaghn: Cosmic Horror Ataxx",
         WS_POPUP | WS_VISIBLE,
         0, 0, SCREEN_WIDTH, SCREEN_HEIGHT,
@@ -408,17 +446,50 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPWSTR lpCmdLin
     );
 
     if (!hwnd) {
-        return 1;
+        LogDebug("Retrying CreateWindowEx without WS_EX_TOPMOST...\r\n");
+        hwnd = CreateWindowExW(
+            0,
+            szClassName,
+            L"Ftaghn: Cosmic Horror Ataxx",
+            WS_POPUP | WS_VISIBLE,
+            0, 0, SCREEN_WIDTH, SCREEN_HEIGHT,
+            NULL, NULL, hInstance, NULL
+        );
     }
 
-    ShowWindow(hwnd, nShowCmd);
-    UpdateWindow(hwnd);
+    if (!hwnd) {
+        DWORD err = GetLastError();
+        WCHAR errBuf[80];
+        wsprintfW(errBuf, L"CreateWindowEx failed: err=%lu", err);
+        LogDebug("FATAL: CreateWindowEx failed\r\n");
+        MessageBoxW(NULL, errBuf, L"Ftaghn Error", MB_OK);
+        return 1;
+    }
+    s_hwndMain = hwnd;
+    LogDebug("[5/5] CreateWindowEx OK\r\n");
 
+    /* 4. Initialize double-buffered renderer with window DC */
+    Render_Init(hwnd);
+    LogDebug("Render_Init OK\r\n");
+
+    /* 5. Show and refresh window */
+    ShowWindow(hwnd, (nShowCmd == 0 ? SW_SHOW : nShowCmd));
+    UpdateWindow(hwnd);
+    LogDebug("ShowWindow and UpdateWindow OK\r\n");
+
+    /* 6. Start game loop timer & background audio */
+    SetTimer(hwnd, TIMER_ID_SEC, 1000, NULL);
+    Sound_PlayBGM("bg_music.wav");
+    LogDebug("Audio & Timer started\r\n");
+
+    /* 7. Main message dispatch loop */
+    LogDebug("Entering message loop...\r\n");
     MSG msg;
     while (GetMessageW(&msg, NULL, 0, 0)) {
         TranslateMessage(&msg);
         DispatchMessageW(&msg);
     }
+    LogDebug("Message loop exited cleanly.\r\n");
 
     return (int)msg.wParam;
 }

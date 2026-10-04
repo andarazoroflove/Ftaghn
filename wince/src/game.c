@@ -389,7 +389,7 @@ int Game_MakeMove(int from_r, int from_c, int to_r, int to_c, int move_type) {
     }
 
     /* Grimoire Log */
-    char move_msg[128];
+    char move_msg[256];
     const char *pname = (player == CELL_RED) ? g_game.player_name_red : g_game.player_name_blue;
     if (captures > 0) {
         snprintf(move_msg, sizeof(move_msg), "%s %s to (%d,%d) converting %d %s!",
@@ -499,6 +499,7 @@ int Game_MakeMove(int from_r, int from_c, int to_r, int to_c, int move_type) {
 }
 
 void Game_TriggerNextTurn(BOOL forced) {
+    (void)forced;
     if (g_game.game_over) return;
 
     int next_player = (g_game.current_player == CELL_RED) ? CELL_BLUE : CELL_RED;

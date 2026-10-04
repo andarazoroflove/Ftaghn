@@ -43,7 +43,6 @@ int memcmp(const void *s1, const void *s2, size_t n) {
 
 size_t strlen(const char *s) {
     size_t len = 0;
-    if (!s) return 0;
     while (*s++) len++;
     return len;
 }
@@ -101,7 +100,6 @@ char *strchr(const char *s, int c) {
 }
 
 char *strstr(const char *haystack, const char *needle) {
-    if (!haystack || !needle) return NULL;
     if (!*needle) return (char *)haystack;
     for (; *haystack; haystack++) {
         const char *h = haystack;
@@ -288,4 +286,15 @@ int _snprintf(char *buf, size_t size, const char *fmt, ...) {
     int ret = vsnprintf(buf, size, fmt, args);
     va_end(args);
     return ret;
+}
+
+void ascii_to_wide(wchar_t *dest, const char *src, int max_chars) {
+    int i = 0;
+    if (!dest || max_chars <= 0) return;
+    if (!src) { dest[0] = L'\0'; return; }
+    while (src[i] && i < max_chars - 1) {
+        dest[i] = (wchar_t)(unsigned char)src[i];
+        i++;
+    }
+    dest[i] = L'\0';
 }
