@@ -4,6 +4,14 @@ set -e
 if ! command -v arm-mingw32ce-gcc &>/dev/null; then
     echo "arm-mingw32ce-gcc not found in host PATH; invoking via docker container..."
     docker run --rm -v "$(pwd):/work" -w /work 777shuang/docker-cegcc bash wince/tools/build_wince.sh
+    echo "--> Packaging wince/release/ftaghn-j720-StorageCard.zip on host..."
+    rm -f wince/release/ftaghn-j720-StorageCard.zip
+    if command -v zip &>/dev/null; then
+        (cd "wince/release/Storage Card" && zip -r ../ftaghn-j720-StorageCard.zip "Ftaghn")
+    elif command -v python3 &>/dev/null; then
+        python3 -c "import zipfile, os; zipf = zipfile.ZipFile('wince/release/ftaghn-j720-StorageCard.zip', 'w', zipfile.ZIP_DEFLATED); [zipf.write(os.path.join(r, f), os.path.relpath(os.path.join(r, f), 'wince/release/Storage Card')) for r, d, fs in os.walk('wince/release/Storage Card/Ftaghn') for f in fs]; zipf.close()"
+    fi
+    echo "--> Packaging complete: wince/release/ftaghn-j720-StorageCard.zip"
     exit $?
 fi
 
@@ -23,6 +31,7 @@ CC="arm-mingw32ce-gcc"
 
 SRCS_C="
 wince/src/freestanding.c
+wince/src/font.c
 wince/src/bmp_loader.c
 wince/src/sound.c
 wince/src/game.c

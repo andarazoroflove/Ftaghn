@@ -1,82 +1,81 @@
 #include "bmp_loader.h"
 #include "freestanding.h"
 
-HBITMAP BMP_LoadFromFileW(const WCHAR *filepath, int *out_w, int *out_h) {
-    if (!filepath || filepath[0] == L'\0') return NULL;
+BOOL BMP_LoadToBuffer(const WCHAR *filepath, uint32_t *framebuffer, int dst_pitch) {
+    if (!filepath || filepath[0] == L'\0' || !framebuffer) return FALSE;
 
     HANDLE hFile = CreateFileW(filepath, GENERIC_READ, FILE_SHARE_READ, NULL, OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, NULL);
     if (hFile == INVALID_HANDLE_VALUE) {
-        return NULL;
+        return FALSE;
     }
 
     BITMAPFILEHEADER bfh;
     DWORD bytesRead = 0;
     if (!ReadFile(hFile, &bfh, sizeof(BITMAPFILEHEADER), &bytesRead, NULL) || bytesRead != sizeof(BITMAPFILEHEADER)) {
         CloseHandle(hFile);
-        return NULL;
+        return FALSE;
     }
 
-    if (bfh.bfType != 0x4D42) { /* "BM" in little-endian */
+    if (bfh.bfType != 0x4D42) { /* "BM" */
         CloseHandle(hFile);
-        return NULL;
+        return FALSE;
     }
 
     BITMAPINFOHEADER bih;
     if (!ReadFile(hFile, &bih, sizeof(BITMAPINFOHEADER), &bytesRead, NULL) || bytesRead != sizeof(BITMAPINFOHEADER)) {
         CloseHandle(hFile);
-        return NULL;
+        return FALSE;
     }
 
-    int width = bih.biWidth;
-    int height = (bih.biHeight < 0) ? -bih.biHeight : bih.biHeight;
-    int bitCount = bih.biBitCount;
+    int w = bih.biWidth;
+    int h = (bih.biHeight < 0) ? -bih.biHeight : bih.biHeight;
+    BOOL bottom_up = (bih.biHeight > 0);
 
-    if (width <= 0 || width > 1024 || height <= 0 || height > 1024) {
+    if (w != 320 || h != 240) {
         CloseHandle(hFile);
-        return NULL;
+        return FALSE;
     }
 
-    int numColors = 0;
-    if (bitCount <= 8) {
-        numColors = (bih.biClrUsed > 0) ? (int)bih.biClrUsed : (1 << bitCount);
-        if (numColors > 256) numColors = 256;
-    }
+    if (bih.biBitCount == 8) {
+        RGBQUAD pal[256];
+        DWORD pal_read = 0;
+        int num_colors = (bih.biClrUsed > 0) ? (int)bih.biClrUsed : 256;
+        if (num_colors > 256) num_colors = 256;
+        ReadFile(hFile, pal, num_colors * sizeof(RGBQUAD), &pal_read, NULL);
 
-    /* Fixed stack buffer for BITMAPINFO + palette (up to 256 colors) */
-    uint8_t bmi_buf[sizeof(BITMAPINFOHEADER) + 256 * sizeof(RGBQUAD)];
-    memset(bmi_buf, 0, sizeof(bmi_buf));
-    BITMAPINFO *pbmi = (BITMAPINFO *)bmi_buf;
+        uint32_t lut[256];
+        for (int i = 0; i < num_colors; i++) {
+            lut[i] = ((uint32_t)pal[i].rgbRed << 16) | ((uint32_t)pal[i].rgbGreen << 8) | (uint32_t)pal[i].rgbBlue;
+        }
 
-    pbmi->bmiHeader = bih;
-    if (numColors > 0) {
-        ReadFile(hFile, pbmi->bmiColors, numColors * sizeof(RGBQUAD), &bytesRead, NULL);
-    }
-
-    SetFilePointer(hFile, bfh.bfOffBits, NULL, FILE_BEGIN);
-
-    void *pBits = NULL;
-    HDC hdc = GetDC(NULL);
-    HBITMAP hBitmap = CreateDIBSection(hdc, pbmi, DIB_RGB_COLORS, &pBits, NULL, 0);
-    if (hdc) ReleaseDC(NULL, hdc);
-
-    if (hBitmap && pBits) {
-        DWORD rowStride = ((width * bitCount + 31) / 32) * 4;
-        DWORD totalSize = rowStride * height;
-        ReadFile(hFile, pBits, totalSize, &bytesRead, NULL);
-        if (out_w) *out_w = width;
-        if (out_h) *out_h = height;
-    } else if (hBitmap) {
-        DeleteObject(hBitmap);
-        hBitmap = NULL;
+        uint8_t row[320];
+        for (int y = 0; y < 240; y++) {
+            int dy = bottom_up ? (239 - y) : y;
+            ReadFile(hFile, row, 320, &bytesRead, NULL);
+            uint32_t *dst = framebuffer + dy * dst_pitch;
+            for (int x = 0; x < 320; x++) {
+                dst[x] = lut[row[x]];
+            }
+        }
+        CloseHandle(hFile);
+        return TRUE;
+    } else if (bih.biBitCount == 24) {
+        uint8_t row[320 * 3];
+        for (int y = 0; y < 240; y++) {
+            int dy = bottom_up ? (239 - y) : y;
+            ReadFile(hFile, row, 320 * 3, &bytesRead, NULL);
+            uint32_t *dst = framebuffer + dy * dst_pitch;
+            for (int x = 0; x < 320; x++) {
+                uint8_t b = row[x * 3 + 0];
+                uint8_t g = row[x * 3 + 1];
+                uint8_t r = row[x * 3 + 2];
+                dst[x] = ((uint32_t)r << 16) | ((uint32_t)g << 8) | b;
+            }
+        }
+        CloseHandle(hFile);
+        return TRUE;
     }
 
     CloseHandle(hFile);
-    return hBitmap;
-}
-
-HBITMAP BMP_LoadFromFileA(const char *filepath, int *out_w, int *out_h) {
-    if (!filepath || filepath[0] == '\0') return NULL;
-    WCHAR wpath[MAX_PATH];
-    ascii_to_wide(wpath, filepath, MAX_PATH);
-    return BMP_LoadFromFileW(wpath, out_w, out_h);
+    return FALSE;
 }

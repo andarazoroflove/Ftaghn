@@ -2,6 +2,8 @@
 #define RENDER_H
 
 #include <windows.h>
+#include <stdint.h>
+#include <stdbool.h>
 
 #define SCREEN_WIDTH  640
 #define SCREEN_HEIGHT 240
@@ -18,8 +20,9 @@ extern "C" {
 
 void Render_Init(HWND hwnd);
 void Render_Cleanup(void);
-void Render_Paint(HWND hwnd, HDC hdc);
-void Render_LoadCurrentBackground(void);
+void Render_DrawFrame(void);
+void Render_DrawTomeModal(int tome_index);
+void Render_Flip(HWND hwnd);
 
 BOOL Render_GetCellFromPoint(int x, int y, int *out_r, int *out_c);
 int  Render_GetButtonClicked(int x, int y);
