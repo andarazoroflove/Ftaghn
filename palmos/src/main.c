@@ -182,15 +182,20 @@ static void AppEventLoop(void) {
     } while (event.eType != appStopEvent);
 }
 
+static UInt32 s_pin_version = 0;
+
 static Err AppStart(void) {
-    /* Set native coordinate system (320x480 HVGA on Palm T|X) */
+    /* Set native coordinate system (320x480 on Palm T|X, 160x160 on Palm Z22) */
     WinSetCoordinateSystem(kCoordinatesNative);
 
-    /* Close dynamic input area to unlock full 480 pixel height */
-    PINSetInputAreaState(pinInputAreaClosed);
-
-    /* Hide control bar for full immersion */
-    StatHide();
+    /* Check if Dynamic Input Area (PIN) is supported before manipulating it */
+    s_pin_version = 0;
+    if (FtrGet(pinCreator, pinFtrAPIVersion, &s_pin_version) == errNone && s_pin_version != 0) {
+        /* Close dynamic input area to unlock full height on devices with virtual Graffiti (T|X, T3, LifeDrive) */
+        PINSetInputAreaState(pinInputAreaClosed);
+        /* Hide control bar for full immersion */
+        StatHide();
+    }
 
     Sound_Init();
     Game_Init();
@@ -204,9 +209,11 @@ static void AppStop(void) {
     Render_Cleanup();
     Sound_Cleanup();
 
-    /* Restore soft graffiti area and control bar on exit */
-    PINSetInputAreaState(pinInputAreaOpen);
-    StatShow();
+    /* Restore soft graffiti area and control bar on exit if supported */
+    if (s_pin_version != 0) {
+        PINSetInputAreaState(pinInputAreaOpen);
+        StatShow();
+    }
 }
 
 UInt32 PilotMain(UInt16 cmd, MemPtr cmdPBP, UInt16 launchFlags) {

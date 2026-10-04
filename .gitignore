@@ -24,6 +24,10 @@ mac68k/release/
 mac68k/build/
 axim_x50v/release/
 axim_x50v/build/
+palmos/release/
+palmos/build/
+nino300/release/
+nino300/build/
 
 # Operating System & Editor Metadata
 .DS_Store

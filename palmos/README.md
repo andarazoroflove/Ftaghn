@@ -1,17 +1,18 @@
-# Ftaghn: Cosmic Horror Ataxx (Palm T|X Edition)
+# Ftaghn: Cosmic Horror Ataxx (Palm OS Edition - Palm T|X & Palm Z22)
 
-An authentic port of **Ftaghn: Cosmic Horror Ataxx** targeting the **Palm T|X** handheld computer running **Palm OS Garnet 5.4.9** (312 MHz Intel XScale PXA270, 320×480 HVGA display).
-
-Also fully compatible with other Palm OS 5 devices featuring 320×480 or 320×320 displays (Tungsten T3, Tungsten T5, LifeDrive, Tapwave Zodiac, etc.).
+An authentic, dual-resolution port of **Ftaghn: Cosmic Horror Ataxx** targeting Palm OS Garnet devices:
+- **Palm T|X**: 312 MHz Intel XScale PXA270, 320×480 HVGA display, collapsible Dynamic Input Area (DIA).
+- **Palm Z22**: 200 MHz Samsung S3C2410 (ARM920T), fixed 160×160 CSTN color display, physical silkscreen Graffiti.
+- Also compatible with Tungsten T3/T5, LifeDrive, Tapwave Zodiac, Treo 650, Tungsten E/E2, and classic 160×160 Palm OS 5 devices.
 
 ---
 
 ## Architecture & Features
 
-- **Native HVGA (320×480) Display Support**:
-  - Leverages Palm OS 5 High Density Display Manager (`WinSetCoordinateSystem(kCoordinatesNative)`).
-  - Automatically collapses the Dynamic Input Area (DIA / soft Graffiti) via `PINSetInputAreaState(pinInputAreaClosed)` and `StatHide()` to expose the full 320×480 screen.
-  - **Flicker-Free Double Buffering**: Offscreen rendering window (`WinCreateOffscreenWindow(320, 480, screenFormat, ...)`), blitting full frames in a single pass (`WinCopyRectangle`).
+- **Adaptive Resolution Engine (160×160 & 320×480)**:
+  - Dynamically detects display extents via `WinGetDisplayExtent()` at runtime.
+  - Automatically queries `FtrGet(pinCreator, pinFtrAPIVersion)`: safely collapses DIA on Palm T|X/T3/LifeDrive, while preserving physical silkscreen Graffiti on Palm Z22 without crashes.
+  - **Flicker-Free Double Buffering**: Offscreen rendering window (`WinCreateOffscreenWindow`), blitting full frames in a single pass (`WinCopyRectangle`).
 
 - **Screen Layout (320×480 Portrait)**:
   - **Top Area (320×236)**: 7×7 Cosmic Horror Ataxx grid (or 9×9 when Shudde M'ell is invoked). 3D shaded glowing orbs, specular highlights, obstacle monoliths, ice blocks, selection aura, and valid clone/leap move targets.

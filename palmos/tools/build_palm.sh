@@ -27,8 +27,10 @@ m68k-palmos-gcc -palmos5r3 -O2 -Ipalmos/src -c palmos/src/main.c -o "$BUILD_DIR/
 echo "[3/4] Linking Palm OS executable..."
 m68k-palmos-gcc -palmos5r3 -O2 "$BUILD_DIR/main.o" "$BUILD_DIR/game.o" "$BUILD_DIR/render.o" "$BUILD_DIR/sound.o" -o "$BUILD_DIR/ftaghn"
 
-echo "[4/4] Assembling Palm OS PRC database..."
+echo "[4/4] Assembling Palm OS PRC databases..."
 build-prc -o "$RELEASE_DIR/Ftaghn.prc" -n "Ftaghn" -c FTAG "$BUILD_DIR/ftaghn" "$BUILD_DIR"/*.bin
+build-prc -o "$RELEASE_DIR/Ftaghn_Z22.prc" -n "Ftaghn Z22" -c FT22 "$BUILD_DIR/ftaghn" "$BUILD_DIR"/*.bin
 
 echo "=== Build Complete! ==="
 ls -lh "$RELEASE_DIR/Ftaghn.prc"
+ls -lh "$RELEASE_DIR/Ftaghn_Z22.prc"
