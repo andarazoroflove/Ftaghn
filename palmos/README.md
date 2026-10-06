@@ -9,17 +9,19 @@ An authentic, dual-resolution port of **Ftaghn: Cosmic Horror Ataxx** targeting 
 
 ## Architecture & Features
 
-- **Adaptive Resolution Engine (160×160 & 320×480)**:
+- **Adaptive Resolution Engine (160×240 HVGA, 160×160 Square, & 320×480 High-Res)**:
   - Dynamically detects display extents via `WinGetDisplayExtent()` at runtime.
   - Automatically queries `FtrGet(pinCreator, pinFtrAPIVersion)`: safely collapses DIA on Palm T|X/T3/LifeDrive, while preserving physical silkscreen Graffiti on Palm Z22 without crashes.
   - **Flicker-Free Double Buffering**: Offscreen rendering window (`WinCreateOffscreenWindow`), blitting full frames in a single pass (`WinCopyRectangle`).
 
-- **Screen Layout (320×480 Portrait)**:
-  - **Top Area (320×236)**: 7×7 Cosmic Horror Ataxx grid (or 9×9 when Shudde M'ell is invoked). 3D shaded glowing orbs, specular highlights, obstacle monoliths, ice blocks, selection aura, and valid clone/leap move targets.
-  - **Mid Area (Y: 238–276)**: Faction scoreboard, Player vs AI scores, active turn indicator, and Cosmic Game Timer / Stasis.
-  - **The Grimoire (Y: 280–358)**: Eldritch status chronicle displaying the latest invocations, clone buddings, and cosmic anomalies.
-  - **Active Deity Card (Y: 362–404)**: Summary of active deity powers and titles.
-  - **Touch Toolbar (Y: 410–472)**: Stylus touch buttons for `[ NEW GAME ]`, `[ AI: MORTAL / ELDER / ANCIENT ]`, `[ TOME OF LORE ]`, and `[ SOUND: ON / OFF ]`.
+- **Screen Layout (HVGA 160×240 for Palm T|X)**:
+  - **Board Area (Y: 2–136)**: 7×7 Cosmic Horror Ataxx grid (19×19 px cells, 133×133 px active area, centered) or 9×9 grid (15×15 px cells, 135×135 px area). 3D shaded glowing orbs, specular highlights, obstacle monoliths, ice blocks, selection aura, and valid clone/leap move targets.
+  - **Faction & Score HUD (Y: 138–160)**:
+    - Line 1: Crimson score `R:12` with glowing pip, turn status (`YOUR TURN` / `AI THINKING` / `DUEL OVER`), sapphire blue score `10:B`.
+    - Line 2: Active player deity lore name (`Cthulhu`), game timer (`TIME: 1:45` or `STASIS`), and `Elder AI`.
+  - **The Grimoire (Y: 162–196)**: Real-time eldritch status chronicle displaying the latest 2 invocations, clone buddings, and cosmic anomalies (latest in gold highlight).
+  - **Touch Toolbar (Y: 198–222)**: Four large tactile stylus touch buttons: `[ NEW ]`, `[ DIF ]` (Mortal/Elder/Ancient), `[ LORE ]`, and `[ SND ]` (On/Off). Fits with margin to spare whether the Palm OS status bar is visible (height 225) or hidden (height 240).
+  - **Paginated Tome of Forbidden Lore (Y: 2–222)**: 4 cards per page, 6 pages for all 23 deities/secrets, with `[ < PREV ]`, `[ NEXT > ]`, and `[ DONE ]` navigation buttons.
 
 - **Complete Tome of Forbidden Lore (15 Deities + 8 Secrets)**:
   - All 15 Elder Gods & Great Old Ones: Cthulhu (Instant Win), Hastur (Unspeakable Oath), Rhan-Tegoth (Eternal Ice), Yog-Sothoth (Dimensional Toll), Ghroth (Spacetime Shuffle), Azathoth (Entropy), Ithaqua (Cold Wind), Abhoth (Sludge Annihilation), Shoggoth (The Sprawl), Nyarlathotep (Crawling Chaos), Yibb-Tstll, Idha (Timer Stasis), Eihort (Time Warp), Shudde M'ell (9×9 expansion), and Default.

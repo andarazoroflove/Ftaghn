@@ -2,8 +2,15 @@
 #include "sound.h"
 #include <StringMgr.h>
 
-static Coord s_screen_w = 320;
-static Coord s_screen_h = 480;
+typedef enum {
+    RENDER_MODE_160x160 = 0,
+    RENDER_MODE_160x240 = 1,
+    RENDER_MODE_320x480 = 2
+} RenderModeType;
+
+static RenderModeType s_render_mode = RENDER_MODE_160x240;
+static Coord s_screen_w = 160;
+static Coord s_screen_h = 240;
 static Boolean s_is_lowres = false;
 
 static WinHandle s_displayWin = NULL;
@@ -12,6 +19,7 @@ static WinHandle s_offscreenWin = NULL;
 static Boolean s_tome_open = false;
 static int s_tome_page = 0;
 #define TOME_PER_PAGE_HI  6
+#define TOME_PER_PAGE_MID 4
 #define TOME_PER_PAGE_LO  3
 
 /* 5-way D-Pad navigation cursor */
@@ -133,14 +141,21 @@ Boolean Render_Init(WinHandle displayWin) {
     s_displayWin = displayWin;
 
     WinGetDisplayExtent(&w, &h);
-    if (w <= 160 && h <= 160) {
+    if (w >= 300) {
+        s_render_mode = RENDER_MODE_320x480;
+        s_screen_w = 320;
+        s_screen_h = (h >= 480) ? 480 : h;
+        s_is_lowres = false;
+    } else if (h >= 190) {
+        s_render_mode = RENDER_MODE_160x240;
+        s_screen_w = 160;
+        s_screen_h = (h > 240) ? 240 : h;
+        s_is_lowres = false;
+    } else {
+        s_render_mode = RENDER_MODE_160x160;
         s_screen_w = 160;
         s_screen_h = 160;
         s_is_lowres = true;
-    } else {
-        s_screen_w = 320;
-        s_screen_h = 480;
-        s_is_lowres = false;
     }
 
     if (s_offscreenWin) {
@@ -175,8 +190,16 @@ Boolean Render_IsTomeVisible(void) {
 }
 
 void Render_TomeScroll(int delta) {
-    int per_page = s_is_lowres ? TOME_PER_PAGE_LO : TOME_PER_PAGE_HI;
-    int max_pages = (CHAR_MAX_COUNT + per_page - 1) / per_page;
+    int per_page;
+    int max_pages;
+    if (s_render_mode == RENDER_MODE_160x160) {
+        per_page = TOME_PER_PAGE_LO;
+    } else if (s_render_mode == RENDER_MODE_160x240) {
+        per_page = TOME_PER_PAGE_MID;
+    } else {
+        per_page = TOME_PER_PAGE_HI;
+    }
+    max_pages = (CHAR_MAX_COUNT + per_page - 1) / per_page;
     s_tome_page += delta;
     if (s_tome_page < 0) s_tome_page = 0;
     if (s_tome_page >= max_pages) s_tome_page = max_pages - 1;
@@ -185,7 +208,7 @@ void Render_TomeScroll(int delta) {
 /* Geometry calculations */
 static void GetBoardMetrics(Coord *out_ox, Coord *out_oy, Coord *out_csize) {
     int n = g_game.board_size;
-    if (s_is_lowres) {
+    if (s_render_mode == RENDER_MODE_160x160) {
         if (n >= 9) {
             *out_csize = 12;
             *out_ox = (160 - (n * 12)) / 2;
@@ -197,6 +220,16 @@ static void GetBoardMetrics(Coord *out_ox, Coord *out_oy, Coord *out_csize) {
         } else {
             *out_csize = 16;
             *out_ox = (160 - (n * 16)) / 2;
+            *out_oy = 2;
+        }
+    } else if (s_render_mode == RENDER_MODE_160x240) {
+        if (n >= 9) {
+            *out_csize = 15;
+            *out_ox = (160 - (n * 15)) / 2;
+            *out_oy = 2;
+        } else {
+            *out_csize = 19;
+            *out_ox = (160 - (n * 19)) / 2;
             *out_oy = 2;
         }
     } else {
@@ -291,7 +324,8 @@ static void DrawBoard(void) {
             Coord cell_y = oy + (r * csize);
             Coord cx = cell_x + (csize / 2);
             Coord cy = cell_y + (csize / 2);
-            Int16 pradius = (csize / 2) - (s_is_lowres ? 2 : 3);
+            Boolean is_hires = (s_render_mode == RENDER_MODE_320x480);
+            Int16 pradius = (csize / 2) - (is_hires ? 3 : 2);
             int cell_val = g_game.board[r][c];
 
             /* Tile background with subtle checker tone */
@@ -307,12 +341,12 @@ static void DrawBoard(void) {
                 if (mtype == MOVE_CLONE) {
                     /* Clone (Distance 1): Glowing green target dot */
                     SetDrawColor(50, 230, 100);
-                    DrawFilledCircle(cx, cy, s_is_lowres ? 2 : 4);
+                    DrawFilledCircle(cx, cy, is_hires ? 4 : 2);
                 } else if (mtype == MOVE_LEAP) {
                     /* Leap (Distance 2): Glowing amber target ring */
                     SetDrawColor(240, 190, 40);
-                    DrawCircleOutline(cx, cy, s_is_lowres ? 3 : 5);
-                    if (!s_is_lowres) DrawCircleOutline(cx, cy, 4);
+                    DrawCircleOutline(cx, cy, is_hires ? 5 : ((csize >= 18) ? 4 : 3));
+                    if (is_hires) DrawCircleOutline(cx, cy, 4);
                 }
             }
 
@@ -324,8 +358,8 @@ static void DrawBoard(void) {
             /* Selected Cell Highlight: Glowing pulsing ring */
             if (g_game.has_selected && r == g_game.selected_r && c == g_game.selected_c) {
                 SetDrawColor(255, 230, 50);
-                DrawCircleOutline(cx, cy, pradius + (s_is_lowres ? 1 : 2));
-                if (!s_is_lowres) DrawCircleOutline(cx, cy, pradius + 1);
+                DrawCircleOutline(cx, cy, pradius + (is_hires ? 2 : 1));
+                if (is_hires) DrawCircleOutline(cx, cy, pradius + 1);
             }
 
             /* 5-way D-Pad Cursor */
@@ -484,6 +518,145 @@ static void DrawTomeModal(void) {
     DrawTextCentered("RESUME THE DUEL", 50, 434, 220, 255, 255, 255, boldFont);
 }
 
+/* --- HVGA (160x240 Palm T|X / T3 / LifeDrive) Layout Components --- */
+
+static void DrawHUD_160x240(void) {
+    char s_red[16], s_blue[16], s_status[32];
+    Coord hy = 138;
+    Coord hw = 156;
+    Coord hh = 22;
+    Coord hx = 2;
+
+    DrawBeveledRect(hx, hy, hw, hh, 20, 22, 34, 55, 60, 80, 10, 10, 16);
+
+    /* Red score (Left) */
+    SetDrawColor(239, 68, 68);
+    DrawFilledCircle(hx + 6, hy + 6, 3);
+    StrPrintF(s_red, "R:%d", g_game.scores[CELL_RED]);
+    DrawText(s_red, hx + 12, hy + 2, 255, 120, 120, boldFont);
+    DrawText(g_secrets[g_game.char_red].name, hx + 3, hy + 12, 210, 160, 160, stdFont);
+
+    /* Turn & Timer Status (Center) */
+    if (g_game.game_over) {
+        DrawTextCentered("DUEL OVER", hx + 38, hy + 2, 80, 255, 215, 0, boldFont);
+    } else if (g_game.current_player == CELL_BLUE) {
+        DrawTextCentered("AI THINKING", hx + 38, hy + 2, 80, 100, 180, 255, boldFont);
+    } else {
+        DrawTextCentered("YOUR TURN", hx + 38, hy + 2, 80, 255, 90, 90, boldFont);
+    }
+
+    if (g_game.time_distortion == 0.0f) {
+        StrCopy(s_status, "STASIS");
+    } else {
+        int m = g_game.game_timer / 60;
+        int s = g_game.game_timer % 60;
+        StrPrintF(s_status, "%d:%02d", m, s);
+    }
+    DrawTextCentered(s_status, hx + 38, hy + 12, 80, 200, 200, 215, stdFont);
+
+    /* Blue score (Right) */
+    StrPrintF(s_blue, "%d:B", g_game.scores[CELL_BLUE]);
+    DrawText(s_blue, hx + hw - 33, hy + 2, 120, 180, 255, boldFont);
+    SetDrawColor(59, 130, 246);
+    DrawFilledCircle(hx + hw - 6, hy + 6, 3);
+    DrawText("Elder AI", hx + hw - 36, hy + 12, 160, 180, 220, stdFont);
+}
+
+static void DrawGrimoire_160x240(void) {
+    Coord gy = 162;
+    Coord gw = 156;
+    Coord gh = 34;
+    Coord gx = 2;
+    int i;
+
+    DrawBeveledRect(gx, gy, gw, gh, 16, 14, 22, 60, 50, 75, 8, 8, 12);
+    DrawTextCentered("--- THE GRIMOIRE ---", gx, gy + 2, gw, 180, 160, 210, boldFont);
+
+    for (i = 0; i < 2 && i < g_game.grimoire_count; i++) {
+        Coord line_y = gy + 12 + (i * 10);
+        if (i == 0) {
+            DrawText(g_game.grimoire[i].text, gx + 4, line_y, 255, 230, 120, stdFont);
+        } else {
+            DrawText(g_game.grimoire[i].text, gx + 4, line_y, 160, 155, 185, stdFont);
+        }
+    }
+}
+
+static void DrawButtons_160x240(void) {
+    const char *diff_names[] = { "MORT", "ELDR", "ANCT" };
+    const char *snd_text = Sound_IsMuted() ? "S:OFF" : "S:ON";
+    Coord by = 198;
+    Coord bh = 24;
+
+    /* [NEW] button: x = 2..38 */
+    DrawBeveledRect(2, by, 36, bh, 40, 45, 60, 90, 100, 130, 20, 22, 30);
+    DrawTextCentered("NEW", 2, by + 6, 36, 255, 255, 255, boldFont);
+
+    /* [DIF] button: x = 41..78 */
+    DrawBeveledRect(41, by, 37, bh, 40, 45, 60, 90, 100, 130, 20, 22, 30);
+    DrawTextCentered(diff_names[g_game.difficulty % 3], 41, by + 6, 37, 255, 255, 255, boldFont);
+
+    /* [LORE] button: x = 81..119 */
+    DrawBeveledRect(81, by, 38, bh, 65, 30, 80, 130, 70, 160, 30, 15, 40);
+    DrawTextCentered("LORE", 81, by + 6, 38, 255, 230, 120, boldFont);
+
+    /* [SND] button: x = 122..158 */
+    DrawBeveledRect(122, by, 36, bh, 40, 45, 60, 90, 100, 130, 20, 22, 30);
+    DrawTextCentered(snd_text, 122, by + 6, 36, 255, 255, 255, boldFont);
+}
+
+static void DrawTomeModal_160x240(void) {
+    int max_pages = (CHAR_MAX_COUNT + TOME_PER_PAGE_MID - 1) / TOME_PER_PAGE_MID;
+    int start_idx = s_tome_page * TOME_PER_PAGE_MID;
+    int i;
+    char page_str[24];
+    Coord by = 194;
+    Coord bh = 24;
+
+    /* Backdrop */
+    DrawFilledRect(0, 0, 160, s_screen_h, 14, 12, 18, 0);
+
+    /* Header */
+    DrawBeveledRect(2, 2, 156, 17, 28, 20, 36, 80, 60, 95, 12, 10, 18);
+    DrawText("TOME OF LORE", 6, 4, 255, 215, 0, boldFont);
+    StrPrintF(page_str, "%d/%d", s_tome_page + 1, max_pages);
+    DrawText(page_str, 128, 4, 200, 200, 220, stdFont);
+
+    /* 4 Cards per page */
+    for (i = 0; i < TOME_PER_PAGE_MID; i++) {
+        int idx = start_idx + i;
+        Coord cy = 22 + (i * 42);
+        const SecretInfo *sec;
+        char title_buf[64];
+
+        if (idx >= CHAR_MAX_COUNT) break;
+        sec = &g_secrets[idx];
+
+        if (g_game.char_red == (enum CharType)idx) {
+            DrawBeveledRect(3, cy, 154, 40, 40, 30, 50, 255, 215, 0, 120, 100, 0);
+        } else {
+            DrawBeveledRect(3, cy, 154, 40, 24, 20, 30, 65, 55, 75, 12, 10, 16);
+        }
+
+        StrPrintF(title_buf, "%d. %s - %s", idx + 1, sec->name, sec->title);
+        DrawText(title_buf, 6, cy + 3, 255, 215, 80, boldFont);
+        DrawText(sec->description, 6, cy + 16, 200, 200, 210, stdFont);
+    }
+
+    /* Navigation buttons */
+    /* [< PREV] */
+    DrawBeveledRect(3, by, 46, bh, 35, 40, 55, 80, 90, 120, 16, 18, 24);
+    DrawTextCentered("< PREV", 3, by + 6, 46, 220, 220, 230, boldFont);
+
+    /* [NEXT >] */
+    DrawBeveledRect(52, by, 46, bh, 35, 40, 55, 80, 90, 120, 16, 18, 24);
+    DrawTextCentered("NEXT >", 52, by + 6, 46, 220, 220, 230, boldFont);
+
+    /* [DONE] */
+    DrawBeveledRect(101, by, 56, bh, 70, 35, 45, 140, 70, 90, 35, 18, 22);
+    DrawTextCentered("DONE", 101, by + 6, 56, 255, 230, 140, boldFont);
+}
+
 /* --- Low-Res (160x160 Palm Z22) Layout Components --- */
 
 static void DrawHUDLowRes(void) {
@@ -610,18 +783,27 @@ void Render_DrawAll(void) {
     WinSetDrawWindow(s_offscreenWin);
 
     if (s_tome_open) {
-        if (s_is_lowres) {
+        if (s_render_mode == RENDER_MODE_160x160) {
             DrawTomeModalLowRes();
+        } else if (s_render_mode == RENDER_MODE_160x240) {
+            DrawTomeModal_160x240();
         } else {
             DrawTomeModal();
         }
     } else {
-        if (s_is_lowres) {
+        if (s_render_mode == RENDER_MODE_160x160) {
             /* Cosmic starfield backdrop */
             DrawFilledRect(0, 0, 160, 160, 12, 14, 22, 0);
             DrawBoard();
             DrawHUDLowRes();
             DrawButtonsLowRes();
+        } else if (s_render_mode == RENDER_MODE_160x240) {
+            /* Cosmic starfield backdrop */
+            DrawFilledRect(0, 0, s_screen_w, s_screen_h, 12, 14, 22, 0);
+            DrawBoard();
+            DrawHUD_160x240();
+            DrawGrimoire_160x240();
+            DrawButtons_160x240();
         } else {
             /* Cosmic starfield backdrop */
             DrawFilledRect(0, 0, 320, 480, 12, 14, 22, 0);
@@ -642,8 +824,96 @@ Boolean Render_HandleClick(Coord x, Coord y) {
     Coord ox, oy, csize;
     int n = g_game.board_size;
 
-    if (s_tome_open) {
-        if (s_is_lowres) {
+    if (s_render_mode == RENDER_MODE_160x240) {
+        if (s_tome_open) {
+            /* 4 cards per page on 160x240 */
+            if (y >= 22 && y < 22 + (4 * 42) && x >= 3 && x < 157) {
+                int card = (y - 22) / 42;
+                int idx = (s_tome_page * TOME_PER_PAGE_MID) + card;
+                if (idx >= 0 && idx < CHAR_MAX_COUNT) {
+                    Game_ApplySecret((enum CharType)idx, CELL_RED);
+                    s_tome_open = false;
+                    Sound_PlaySFX("select.wav");
+                    Render_DrawAll();
+                    return true;
+                }
+            }
+            /* Prev Button */
+            if (x >= 3 && x < 49 && y >= 194 && y < 218) {
+                Render_TomeScroll(-1);
+                Sound_PlaySFX("select.wav");
+                Render_DrawAll();
+                return true;
+            }
+            /* Next Button */
+            if (x >= 52 && x < 98 && y >= 194 && y < 218) {
+                Render_TomeScroll(1);
+                Sound_PlaySFX("select.wav");
+                Render_DrawAll();
+                return true;
+            }
+            /* Done Button */
+            if (x >= 101 && x < 157 && y >= 194 && y < 218) {
+                s_tome_open = false;
+                Sound_PlaySFX("select.wav");
+                Render_DrawAll();
+                return true;
+            }
+            return true;
+        }
+
+        /* Main Screen Buttons (160x240): y = 198..222 */
+        /* [NEW] */
+        if (x >= 2 && x < 39 && y >= 198 && y < 224) {
+            Sound_PlaySFX("place.wav");
+            Game_ResetGame();
+            Render_DrawAll();
+            return true;
+        }
+
+        /* [DIF] */
+        if (x >= 41 && x < 79 && y >= 198 && y < 224) {
+            g_game.difficulty = (g_game.difficulty + 1) % 3;
+            Sound_PlaySFX("select.wav");
+            Render_DrawAll();
+            return true;
+        }
+
+        /* [LORE] */
+        if (x >= 81 && x < 120 && y >= 198 && y < 224) {
+            Sound_PlaySFX("select.wav");
+            Render_SetTomeVisible(true);
+            Render_DrawAll();
+            return true;
+        }
+
+        /* [SND] */
+        if (x >= 122 && x < 158 && y >= 198 && y < 224) {
+            Sound_ToggleMute();
+            if (!Sound_IsMuted()) {
+                Sound_PlayTone(600, 30, 40);
+            }
+            Render_DrawAll();
+            return true;
+        }
+
+        /* Board Click */
+        GetBoardMetrics(&ox, &oy, &csize);
+        if (x >= ox && x < ox + (n * csize) && y >= oy && y < oy + (n * csize)) {
+            int col = (x - ox) / csize;
+            int row = (y - oy) / csize;
+            s_cursor_r = row;
+            s_cursor_c = col;
+            Game_HandleClick(row, col);
+            Render_DrawAll();
+            return true;
+        }
+
+        return false;
+    }
+
+    if (s_render_mode == RENDER_MODE_160x160) {
+        if (s_tome_open) {
             /* 3 cards per page on 160x160 */
             if (y >= 19 && y < 19 + (3 * 38) && x >= 3 && x < 157) {
                 int card = (y - 19) / 38;
@@ -678,49 +948,8 @@ Boolean Render_HandleClick(Coord x, Coord y) {
                 return true;
             }
             return true;
-        } else {
-            /* Check entry taps (6 cards) on 320x480 */
-            if (y >= 50 && y < 50 + (TOME_PER_PAGE_HI * 54) && x >= 8 && x < 312) {
-                int card = (y - 50) / 54;
-                int idx = (s_tome_page * TOME_PER_PAGE_HI) + card;
-                if (idx >= 0 && idx < CHAR_MAX_COUNT) {
-                    Game_ApplySecret((enum CharType)idx, CELL_RED);
-                    s_tome_open = false;
-                    Sound_PlaySFX("select.wav");
-                    Render_DrawAll();
-                    return true;
-                }
-            }
-
-            /* Prev Button */
-            if (x >= 10 && x < 90 && y >= 380 && y < 408) {
-                Render_TomeScroll(-1);
-                Sound_PlaySFX("select.wav");
-                Render_DrawAll();
-                return true;
-            }
-
-            /* Next Button */
-            if (x >= 230 && x < 310 && y >= 380 && y < 408) {
-                Render_TomeScroll(1);
-                Sound_PlaySFX("select.wav");
-                Render_DrawAll();
-                return true;
-            }
-
-            /* Resume Button */
-            if (x >= 50 && x < 270 && y >= 424 && y < 460) {
-                s_tome_open = false;
-                Sound_PlaySFX("select.wav");
-                Render_DrawAll();
-                return true;
-            }
-
-            return true;
         }
-    }
 
-    if (s_is_lowres) {
         /* Low-res buttons at y: 136..158 */
         /* [NEW] */
         if (x >= 2 && x < 38 && y >= 136 && y < 158) {
@@ -769,6 +998,48 @@ Boolean Render_HandleClick(Coord x, Coord y) {
         }
 
         return false;
+    }
+
+    /* Otherwise RENDER_MODE_320x480 */
+    if (s_tome_open) {
+        /* Check entry taps (6 cards) on 320x480 */
+        if (y >= 50 && y < 50 + (TOME_PER_PAGE_HI * 54) && x >= 8 && x < 312) {
+            int card = (y - 50) / 54;
+            int idx = (s_tome_page * TOME_PER_PAGE_HI) + card;
+            if (idx >= 0 && idx < CHAR_MAX_COUNT) {
+                Game_ApplySecret((enum CharType)idx, CELL_RED);
+                s_tome_open = false;
+                Sound_PlaySFX("select.wav");
+                Render_DrawAll();
+                return true;
+            }
+        }
+
+        /* Prev Button */
+        if (x >= 10 && x < 90 && y >= 380 && y < 408) {
+            Render_TomeScroll(-1);
+            Sound_PlaySFX("select.wav");
+            Render_DrawAll();
+            return true;
+        }
+
+        /* Next Button */
+        if (x >= 230 && x < 310 && y >= 380 && y < 408) {
+            Render_TomeScroll(1);
+            Sound_PlaySFX("select.wav");
+            Render_DrawAll();
+            return true;
+        }
+
+        /* Resume Button */
+        if (x >= 50 && x < 270 && y >= 424 && y < 460) {
+            s_tome_open = false;
+            Sound_PlaySFX("select.wav");
+            Render_DrawAll();
+            return true;
+        }
+
+        return true;
     }
 
     /* Main Screen Buttons (320x480) */

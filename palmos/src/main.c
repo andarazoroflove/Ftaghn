@@ -31,6 +31,16 @@ static Boolean MainFormHandleEvent(EventType *eventP) {
     switch (eventP->eType) {
         case frmOpenEvent: {
             FormType *frm = FrmGetActiveForm();
+            if (frm) {
+                RectangleType rect;
+                Coord w, h;
+                WinGetDisplayExtent(&w, &h);
+                rect.topLeft.x = 0;
+                rect.topLeft.y = 0;
+                rect.extent.x = w;
+                rect.extent.y = h;
+                WinSetWindowBounds(FrmGetWindowHandle(frm), &rect);
+            }
             FrmDrawForm(frm);
             Render_Init(WinGetDisplayWindow());
             Render_DrawAll();
@@ -43,10 +53,23 @@ static Boolean MainFormHandleEvent(EventType *eventP) {
             handled = true;
             break;
 
-        case winDisplayChangedEvent:
+        case winDisplayChangedEvent: {
+            FormType *frm = FrmGetActiveForm();
+            if (frm) {
+                RectangleType rect;
+                Coord w, h;
+                WinGetDisplayExtent(&w, &h);
+                rect.topLeft.x = 0;
+                rect.topLeft.y = 0;
+                rect.extent.x = w;
+                rect.extent.y = h;
+                WinSetWindowBounds(FrmGetWindowHandle(frm), &rect);
+            }
+            Render_Init(WinGetDisplayWindow());
             Render_DrawAll();
             handled = true;
             break;
+        }
 
         case penDownEvent: {
             Coord x = eventP->screenX;
@@ -135,6 +158,8 @@ static Boolean MainFormHandleEvent(EventType *eventP) {
     return handled;
 }
 
+static UInt32 s_pin_version = 0;
+
 static Boolean AppHandleEvent(EventType *eventP) {
     UInt16 formId;
     FormType *frm;
@@ -142,6 +167,9 @@ static Boolean AppHandleEvent(EventType *eventP) {
     if (eventP->eType == frmLoadEvent) {
         formId = eventP->data.frmLoad.formID;
         frm = FrmInitForm(formId);
+        if (s_pin_version != 0) {
+            FrmSetDIAPolicyAttr(frm, frmDIAPolicyCustom);
+        }
         FrmSetActiveForm(frm);
         FrmSetEventHandler(frm, MainFormHandleEvent);
         return true;
@@ -182,12 +210,7 @@ static void AppEventLoop(void) {
     } while (event.eType != appStopEvent);
 }
 
-static UInt32 s_pin_version = 0;
-
 static Err AppStart(void) {
-    /* Set native coordinate system (320x480 on Palm T|X, 160x160 on Palm Z22) */
-    WinSetCoordinateSystem(kCoordinatesNative);
-
     /* Check if Dynamic Input Area (PIN) is supported before manipulating it */
     s_pin_version = 0;
     if (FtrGet(pinCreator, pinFtrAPIVersion, &s_pin_version) == errNone && s_pin_version != 0) {
