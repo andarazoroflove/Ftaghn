@@ -39,6 +39,10 @@ static void ApplyPocketPCFullScreen(HWND hwnd) {
         }
         FreeLibrary(hAyg);
     }
+    HWND hTaskBar = FindWindowW(L"HHTaskBar", NULL);
+    if (hTaskBar) {
+        ShowWindow(hTaskBar, SW_HIDE);
+    }
     int sw = GetSystemMetrics(SM_CXSCREEN);
     int sh = GetSystemMetrics(SM_CYSCREEN);
     if (sw <= 0) sw = 240;
@@ -59,32 +63,32 @@ static BOOL HandleTomeClick(HWND hwnd, int x, int y) {
     if (!s_tome_open) return FALSE;
 
     if (Render_IsQVGA()) {
-        /* Prev Button: X: 10..74, Y: 212..252 */
-        if (x >= 10 && x <= 74 && y >= 212 && y <= 252) {
+        /* Prev Button: X: 10..74, Y: 198..234 */
+        if (x >= 10 && x <= 74 && y >= 198 && y <= 234) {
             s_tome_index = (s_tome_index - 1 + CHAR_MAX_COUNT) % CHAR_MAX_COUNT;
             Sound_PlaySFX("select.wav");
             UpdateScreen(hwnd);
             return TRUE;
         }
 
-        /* Invoke Button: X: 78..162, Y: 212..252 */
-        if (x >= 78 && x <= 162 && y >= 212 && y <= 252) {
+        /* Invoke Button: X: 78..162, Y: 198..234 */
+        if (x >= 78 && x <= 162 && y >= 198 && y <= 234) {
             Game_ApplySecret((enum CharType)s_tome_index, CELL_RED);
             s_tome_open = FALSE;
             UpdateScreen(hwnd);
             return TRUE;
         }
 
-        /* Next Button: X: 166..230, Y: 212..252 */
-        if (x >= 166 && x <= 230 && y >= 212 && y <= 252) {
+        /* Next Button: X: 166..230, Y: 198..234 */
+        if (x >= 166 && x <= 230 && y >= 198 && y <= 234) {
             s_tome_index = (s_tome_index + 1) % CHAR_MAX_COUNT;
             Sound_PlaySFX("select.wav");
             UpdateScreen(hwnd);
             return TRUE;
         }
 
-        /* Resume Button: X: 30..210, Y: 258..298 */
-        if (x >= 30 && x <= 210 && y >= 258 && y <= 298) {
+        /* Resume Button: X: 24..216, Y: 240..276 */
+        if (x >= 24 && x <= 216 && y >= 240 && y <= 276) {
             s_tome_open = FALSE;
             Sound_PlaySFX("select.wav");
             UpdateScreen(hwnd);
@@ -92,38 +96,38 @@ static BOOL HandleTomeClick(HWND hwnd, int x, int y) {
         }
 
         /* Click outside modal closes it */
-        if (x < 4 || x > 236 || y < 4 || y > 316) {
+        if (x < 4 || x > 236 || y < 26 || y > 292) {
             s_tome_open = FALSE;
             UpdateScreen(hwnd);
             return TRUE;
         }
     } else {
-        /* Prev Button: X: 24..134, Y: 480..530 */
-        if (x >= 24 && x <= 134 && y >= 480 && y <= 530) {
+        /* Prev Button: X: 24..134, Y: 448..494 */
+        if (x >= 24 && x <= 134 && y >= 448 && y <= 494) {
             s_tome_index = (s_tome_index - 1 + CHAR_MAX_COUNT) % CHAR_MAX_COUNT;
             Sound_PlaySFX("select.wav");
             UpdateScreen(hwnd);
             return TRUE;
         }
 
-        /* Invoke Button: X: 144..336, Y: 480..530 */
-        if (x >= 144 && x <= 336 && y >= 480 && y <= 530) {
+        /* Invoke Button: X: 144..336, Y: 448..494 */
+        if (x >= 144 && x <= 336 && y >= 448 && y <= 494) {
             Game_ApplySecret((enum CharType)s_tome_index, CELL_RED);
             s_tome_open = FALSE;
             UpdateScreen(hwnd);
             return TRUE;
         }
 
-        /* Next Button: X: 346..456, Y: 480..530 */
-        if (x >= 346 && x <= 456 && y >= 480 && y <= 530) {
+        /* Next Button: X: 346..456, Y: 448..494 */
+        if (x >= 346 && x <= 456 && y >= 448 && y <= 494) {
             s_tome_index = (s_tome_index + 1) % CHAR_MAX_COUNT;
             Sound_PlaySFX("select.wav");
             UpdateScreen(hwnd);
             return TRUE;
         }
 
-        /* Resume Button: X: 120..360, Y: 550..600 */
-        if (x >= 120 && x <= 360 && y >= 550 && y <= 600) {
+        /* Resume Button: X: 120..360, Y: 506..552 */
+        if (x >= 120 && x <= 360 && y >= 506 && y <= 552) {
             s_tome_open = FALSE;
             Sound_PlaySFX("select.wav");
             UpdateScreen(hwnd);
@@ -131,7 +135,7 @@ static BOOL HandleTomeClick(HWND hwnd, int x, int y) {
         }
 
         /* Click outside modal closes it */
-        if (x < 10 || x > 470 || y < 10 || y > 630) {
+        if (x < 10 || x > 470 || y < 54 || y > 584) {
             s_tome_open = FALSE;
             UpdateScreen(hwnd);
             return TRUE;
@@ -148,6 +152,12 @@ LRESULT CALLBACK WndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam) {
             ApplyPocketPCFullScreen(hwnd);
             SetTimer(hwnd, TIMER_ID_SEC, 1000, NULL);
             SetTimer(hwnd, TIMER_ID_SND, 50, NULL);
+            return 0;
+
+        case WM_ACTIVATE:
+            if (LOWORD(wParam) != WA_INACTIVE) {
+                ApplyPocketPCFullScreen(hwnd);
+            }
             return 0;
 
         case WM_PAINT: {
@@ -341,11 +351,16 @@ LRESULT CALLBACK WndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam) {
             DestroyWindow(hwnd);
             return 0;
 
-        case WM_DESTROY:
+        case WM_DESTROY: {
+            HWND hTaskBar = FindWindowW(L"HHTaskBar", NULL);
+            if (hTaskBar) {
+                ShowWindow(hTaskBar, SW_SHOW);
+            }
             Render_Cleanup();
             Sound_Cleanup();
             PostQuitMessage(0);
             return 0;
+        }
 
         default:
             return DefWindowProcW(hwnd, msg, wParam, lParam);

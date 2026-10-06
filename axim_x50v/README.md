@@ -23,23 +23,20 @@ An authentic, high-resolution port of **Ftaghn: Cosmic Horror Ataxx** targeting 
 
 The engine automatically queries device metrics (`SM_CXSCREEN`, `SM_CYSCREEN`) and scales all board cells, piece graphics, HUD elements, grimoire scroll, and touch toolbar to fit the screen 100% edge-to-edge whether the Dell Axim X50v is running in native VGA (480×640) or Windows Mobile 2003SE standard QVGA mode (240×320).
 
-1. **Board Section (Top)**:
-   - **QVGA 240×320**: 7×7 grid uses 26×26 px cells (182×182 px area); 9×9 uses 22×22 px cells (198×198 px area).
-   - **VGA 480×640**: 7×7 grid uses 52×52 px cells (364×364 px area); 9×9 uses 42×42 px cells (378×378 px area).
+1. **Board Section (Safe Top Margin)**:
+   - **QVGA 240×320**: 7×7 grid uses 22×22 px cells (154×154 px active area, $y = 28..182$); 9×9 uses 19×19 px cells (171×171 px active area, $y = 27..198$). Starts strictly below the $y = 0..26$ Pocket PC title bar.
+   - **VGA 480×640**: 7×7 grid uses 44×44 px cells (308×308 px active area, $y = 56..364$); 9×9 uses 38×38 px cells (342×342 px active area, $y = 54..396$). Starts strictly below the $y = 0..52$ Pocket PC title bar.
    - Glowing 3D orbs with specular highlights, monolith obstacles with glowing red eye slits, cyan frozen ice blocks (Rhan-Tegoth), present boxes with gold ribbons (Santa Egg), pulsing gold selection auras, and move indicators (green dot for clone, amber ring for leap).
-2. **Faction HUD Banner (Y: 384–432)**:
-   - Left: Crimson Cult score, orb icon, and player name.
-   - Center: Turn indicator ("YOUR TURN" / "AI THINKING...") and Cosmic Game Timer (or Time Stasis under Idha).
-   - Right: Elder God AI score, orb icon, and AI name.
-3. **The Grimoire (Y: 438–530)**:
-   - Real-time eldritch chronicle scroll logging invocations, clone buddings, and cosmic anomalies. Newest entry glows in bright gold.
-4. **Active Deity Lore Card (Y: 536–580)**:
-   - Summary of active deity titles and cosmic powers.
-5. **Touch Toolbar (Y: 586–632)**:
-   - Four large stylus touch buttons: `[ NEW GAME ]`, `[ AI: DIFF ]`, `[ TOME OF LORE ]`, and `[ SOUND: ON/OFF ]`.
-6. **Full-Screen Tome of Forbidden Lore Modal**:
-   - Comprehensive interactive codex showing all 15 Deities and 8 Mortal Easter Eggs.
-   - Stylus navigation (`[ < PREV ]`, `[ NEXT > ]`) and `[ INVOKE DEITY ]` button.
+2. **Unified Faction & Deity HUD**:
+   - Scores (Red & Blue), player names, real-time turn indicator ("YOUR TURN" / "AI THINK"), Cosmic Game Timer / Stasis, and active Deity lore title in a single compact status box.
+3. **The Grimoire**:
+   - Real-time eldritch chronicle scroll dynamically sized to fill the space above the toolbar.
+4. **Thinner Touch Toolbar (Safe Bottom Margin)**:
+   - Reduced height to 22 px on QVGA ($y = 272..294$) and 44 px on VGA ($y = 540..584$).
+   - Four stylus touch buttons: `[ NEW ]`, `[ DIFF ]`, `[ TOME ]`, and `[ SOUND ]` positioned safely above the bottom navigation/SIP bar.
+5. **Tome of Forbidden Lore Modal**:
+   - Comprehensive interactive codex showing all 15 Deities and 8 Mortal Easter Eggs, fitted safely within the visible client area.
+   - Stylus navigation (`[ < PREV ]`, `[ NEXT > ]`), `[ INVOKE ]`, and `[ RESUME DUEL ]`.
 
 ---
 

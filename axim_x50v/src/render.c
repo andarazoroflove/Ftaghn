@@ -191,23 +191,23 @@ static void GetBoardMetrics(int *out_ox, int *out_oy, int *out_csize) {
     int n = g_game.board_size;
     if (s_is_qvga) {
         if (n >= 9) {
+            *out_csize = 19;
+            *out_ox = (s_screen_w - (n * 19)) / 2;
+            *out_oy = 27;
+        } else {
             *out_csize = 22;
             *out_ox = (s_screen_w - (n * 22)) / 2;
-            *out_oy = 2;
-        } else {
-            *out_csize = 26;
-            *out_ox = (s_screen_w - (n * 26)) / 2;
-            *out_oy = 4;
+            *out_oy = 28;
         }
     } else {
         if (n >= 9) {
-            *out_csize = 42;
-            *out_ox = (s_screen_w - (n * 42)) / 2;
-            *out_oy = 8;
+            *out_csize = 38;
+            *out_ox = (s_screen_w - (n * 38)) / 2;
+            *out_oy = 54;
         } else {
-            *out_csize = 52;
-            *out_ox = (s_screen_w - (n * 52)) / 2;
-            *out_oy = 14;
+            *out_csize = 44;
+            *out_ox = (s_screen_w - (n * 44)) / 2;
+            *out_oy = 56;
         }
     }
 }
@@ -229,7 +229,7 @@ BOOL Render_GetCellFromPoint(int x, int y, int *out_r, int *out_c) {
 
 int Render_GetButtonClicked(int x, int y) {
     if (s_is_qvga) {
-        if (y >= 288 && y <= 320) {
+        if (y >= 270 && y <= 296) {
             int bw = (s_screen_w - 16) / 4;
             int x1 = 4;
             int x2 = x1 + bw + 2;
@@ -242,7 +242,7 @@ int Render_GetButtonClicked(int x, int y) {
             if (x >= x4 && x <= s_screen_w) return BTN_MUTE;
         }
     } else {
-        if (y >= 586 && y <= 632) {
+        if (y >= 538 && y <= 586) {
             if (x >= 10 && x <= 122)  return BTN_NEW_GAME;
             if (x >= 126 && x <= 238) return BTN_DIFF;
             if (x >= 242 && x <= 362) return BTN_TOME;
@@ -382,7 +382,7 @@ static void DrawBoard(void) {
     int n = g_game.board_size;
     GetBoardMetrics(&ox, &oy, &csize);
 
-    int margin = s_is_qvga ? 3 : 5;
+    int margin = s_is_qvga ? (n >= 9 ? 1 : 2) : (n >= 9 ? 2 : 4);
     /* Outer board shadow & beveled frame */
     gfx_draw_beveled_rect(ox - margin, oy - margin, (n * csize) + (margin * 2), (n * csize) + (margin * 2),
                           0x00141624, 0x00555F7A, 0x000A0A12);
@@ -476,25 +476,29 @@ static void DrawBoard(void) {
 }
 
 static void DrawHUD(void) {
+    int ox, oy, csize;
+    GetBoardMetrics(&ox, &oy, &csize);
+    int n = g_game.board_size;
+    int margin = s_is_qvga ? (n >= 9 ? 1 : 2) : (n >= 9 ? 2 : 4);
+    int board_bottom = oy + (n * csize) + margin;
+    const SecretInfo *sec = &g_secrets[g_game.char_red];
+
     if (s_is_qvga) {
-        int ox, oy, csize;
-        GetBoardMetrics(&ox, &oy, &csize);
-        int n = g_game.board_size;
-        int hy = oy + (n * csize) + 4;
-        int hh = 24;
+        int hy = board_bottom + 2;
+        int hh = (n >= 9) ? 30 : 32;
         gfx_draw_beveled_rect(4, hy, s_screen_w - 8, hh, 0x00141622, 0x00373C50, 0x000A0A10);
 
         /* Left: Crimson Cult */
-        gfx_fill_circle(12, hy + 12, 5, 0x00EF4444);
+        gfx_fill_circle(14, hy + 9, 4, 0x00EF4444);
         char buf_red[16];
         snprintf(buf_red, sizeof(buf_red), "R:%d", g_game.scores[CELL_RED]);
-        gfx_draw_string(20, hy + 3, buf_red, 0x00FF6464, 0, 1);
-        char name_red[10];
-        strncpy(name_red, g_game.player_name_red, 7);
-        name_red[7] = '\0';
-        gfx_draw_string(20, hy + 13, name_red, 0x00C8A0A0, 0, 1);
+        gfx_draw_string(22, hy + 3, buf_red, 0x00FF6464, 0, 1);
+        char p1_name[12];
+        strncpy(p1_name, g_game.player_name_red, 8);
+        p1_name[8] = '\0';
+        gfx_draw_string(8, hy + 13, p1_name, 0x00C8A0A0, 0, 1);
 
-        /* Center: Turn Status & Timer */
+        /* Center: Turn Status & Timer & Compact Deity */
         const char *status_text;
         uint32_t status_col;
         if (g_game.game_over) {
@@ -517,35 +521,41 @@ static void DrawHUD(void) {
             int s = g_game.game_timer % 60;
             snprintf(s_status, sizeof(s_status), "%d:%02d", m, s);
         }
-        gfx_draw_string_centered(65, hy + 13, s_screen_w - 130, s_status, 0x00C8C8D2, 0, 1);
+        gfx_draw_string_centered(65, hy + 12, s_screen_w - 130, s_status, 0x00C8C8D2, 0, 1);
+
+        /* Compact Deity status line */
+        char deity_buf[32];
+        snprintf(deity_buf, sizeof(deity_buf), "[%s]", sec->name);
+        deity_buf[24] = '\0';
+        gfx_draw_string_centered(65, hy + 21, s_screen_w - 130, deity_buf, 0x00FFD250, 0, 1);
 
         /* Right: Elder God AI */
-        gfx_fill_circle(s_screen_w - 12, hy + 12, 5, 0x003B82F6);
+        gfx_fill_circle(s_screen_w - 14, hy + 9, 4, 0x003B82F6);
         char buf_blue[16];
         snprintf(buf_blue, sizeof(buf_blue), "B:%d", g_game.scores[CELL_BLUE]);
         int text_w_blue = (int)strlen(buf_blue) * 8;
-        gfx_draw_string(s_screen_w - 20 - text_w_blue, hy + 3, buf_blue, 0x0078B4FF, 0, 1);
-        gfx_draw_string(s_screen_w - 20 - 40, hy + 13, "Elder", 0x00A0B4DC, 0, 1);
+        gfx_draw_string(s_screen_w - 22 - text_w_blue, hy + 3, buf_blue, 0x0078B4FF, 0, 1);
+        gfx_draw_string(s_screen_w - 48, hy + 13, "Elder", 0x00A0B4DC, 0, 1);
     } else {
-        int hy = 384;
-        int hh = 48;
+        int hy = board_bottom + 4;
+        int hh = (n >= 9) ? 58 : 64;
         gfx_draw_beveled_rect(10, hy, 460, hh, 0x00141622, 0x00373C50, 0x000A0A10);
 
         /* Left: Crimson Cult */
-        gfx_fill_circle(24, hy + 24, 9, 0x00EF4444);
+        gfx_fill_circle(24, hy + 20, 8, 0x00EF4444);
         char buf_red[32];
         snprintf(buf_red, sizeof(buf_red), "RED: %d", g_game.scores[CELL_RED]);
-        gfx_draw_string(40, hy + 8, buf_red, 0x00FF6464, 0, 2);
-        gfx_draw_string(40, hy + 28, g_game.player_name_red, 0x00C8A0A0, 0, 1);
+        gfx_draw_string(38, hy + 6, buf_red, 0x00FF6464, 0, 2);
+        gfx_draw_string(38, hy + 28, g_game.player_name_red, 0x00C8A0A0, 0, 1);
 
-        /* Center: Turn Status & Timer */
+        /* Center: Turn Status & Timer & Deity */
         if (g_game.game_over) {
-            gfx_draw_string_centered(170, hy + 8, 140, "DUEL CONCLUDED", 0x00FFD700, 0, 2);
+            gfx_draw_string_centered(160, hy + 6, 160, "DUEL CONCLUDED", 0x00FFD700, 0, 2);
         } else {
             if (g_game.current_player == CELL_RED) {
-                gfx_draw_string_centered(170, hy + 8, 140, "YOUR TURN", 0x00FF5050, 0, 2);
+                gfx_draw_string_centered(160, hy + 6, 160, "YOUR TURN", 0x00FF5050, 0, 2);
             } else {
-                gfx_draw_string_centered(170, hy + 8, 140, "AI THINKING...", 0x0064B4FF, 0, 2);
+                gfx_draw_string_centered(160, hy + 6, 160, "AI THINKING...", 0x0064B4FF, 0, 2);
             }
         }
 
@@ -557,29 +567,42 @@ static void DrawHUD(void) {
             int s = g_game.game_timer % 60;
             snprintf(s_status, sizeof(s_status), "TIME: %d:%02d", m, s);
         }
-        gfx_draw_string_centered(170, hy + 28, 140, s_status, 0x00C8C8D2, 0, 1);
+        gfx_draw_string_centered(160, hy + 28, 160, s_status, 0x00C8C8D2, 0, 1);
+
+        char deity_buf[64];
+        snprintf(deity_buf, sizeof(deity_buf), "[%s: %s]", sec->name, sec->title);
+        deity_buf[42] = '\0';
+        gfx_draw_string_centered(10, hy + 44, 460, deity_buf, 0x00FFD250, 0, 1);
 
         /* Right: Elder God AI */
-        gfx_fill_circle(456, hy + 24, 9, 0x003B82F6);
+        gfx_fill_circle(456, hy + 20, 8, 0x003B82F6);
         char buf_blue[32];
         snprintf(buf_blue, sizeof(buf_blue), "BLUE: %d", g_game.scores[CELL_BLUE]);
-        gfx_draw_string(340, hy + 8, buf_blue, 0x0078B4FF, 0, 2);
+        gfx_draw_string(340, hy + 6, buf_blue, 0x0078B4FF, 0, 2);
         gfx_draw_string(340, hy + 28, "Elder God AI", 0x00A0B4DC, 0, 1);
     }
 }
 
 static void DrawGrimoire(void) {
+    int ox, oy, csize;
+    GetBoardMetrics(&ox, &oy, &csize);
+    int n = g_game.board_size;
+    int margin = s_is_qvga ? (n >= 9 ? 1 : 2) : (n >= 9 ? 2 : 4);
+    int board_bottom = oy + (n * csize) + margin;
+
     if (s_is_qvga) {
-        int ox, oy, csize;
-        GetBoardMetrics(&ox, &oy, &csize);
-        int n = g_game.board_size;
-        int hy = oy + (n * csize) + 4;
-        int gy = hy + 26;
-        int gh = 36;
+        int hy = board_bottom + 2;
+        int hh = (n >= 9) ? 30 : 32;
+        int gy = hy + hh + 2;
+        int gh = 270 - gy; /* Fill up to just before buttons at y=272 */
+        if (gh < 24) gh = 24;
+
         gfx_draw_beveled_rect(4, gy, s_screen_w - 8, gh, 0x00100E16, 0x003C324B, 0x0008080C);
         gfx_draw_string_centered(4, gy + 2, s_screen_w - 8, "- THE GRIMOIRE -", 0x00B4A0D2, 0, 1);
 
-        for (int i = 0; i < 2 && i < g_game.grimoire_count; i++) {
+        int max_lines = (gh - 14) / 10;
+        if (max_lines > 3) max_lines = 3;
+        for (int i = 0; i < max_lines && i < g_game.grimoire_count; i++) {
             int line_y = gy + 12 + (i * 10);
             uint32_t col = s_grim_colors[i];
             char line[32];
@@ -588,52 +611,22 @@ static void DrawGrimoire(void) {
             gfx_draw_string(8, line_y, line, col, 0, 1);
         }
     } else {
-        int gy = 438;
-        int gh = 92;
-        gfx_draw_beveled_rect(10, gy, 460, gh, 0x00100E16, 0x003C324B, 0x0008080C);
-        gfx_draw_string_centered(10, gy + 5, 460, "--- THE GRIMOIRE ---", 0x00B4A0D2, 0, 1);
+        int hy = board_bottom + 4;
+        int hh = (n >= 9) ? 58 : 64;
+        int gy = hy + hh + 4;
+        int gh = 536 - gy; /* Fill up to buttons at y=540 */
+        if (gh < 50) gh = 50;
 
-        for (int i = 0; i < GRIMOIRE_MAX && i < g_game.grimoire_count; i++) {
-            int line_y = gy + 20 + (i * 13);
+        gfx_draw_beveled_rect(10, gy, 460, gh, 0x00100E16, 0x003C324B, 0x0008080C);
+        gfx_draw_string_centered(10, gy + 4, 460, "--- THE GRIMOIRE ---", 0x00B4A0D2, 0, 1);
+
+        int max_lines = (gh - 22) / 13;
+        if (max_lines > GRIMOIRE_MAX) max_lines = GRIMOIRE_MAX;
+        for (int i = 0; i < max_lines && i < g_game.grimoire_count; i++) {
+            int line_y = gy + 18 + (i * 13);
             uint32_t col = s_grim_colors[i];
             gfx_draw_string(20, line_y, g_game.grimoire[i].text, col, 0, 1);
         }
-    }
-}
-
-static void DrawDeityBanner(void) {
-    const SecretInfo *sec = &g_secrets[g_game.char_red];
-
-    if (s_is_qvga) {
-        int ox, oy, csize;
-        GetBoardMetrics(&ox, &oy, &csize);
-        int n = g_game.board_size;
-        int hy = oy + (n * csize) + 4;
-        int gy = hy + 26;
-        int by = gy + 38;
-        int bh = 22;
-
-        gfx_draw_beveled_rect(4, by, s_screen_w - 8, bh, 0x0016121C, 0x00463C55, 0x000A080E);
-
-        char title_buf[48];
-        snprintf(title_buf, sizeof(title_buf), "%s: %s", sec->name, sec->title);
-        title_buf[27] = '\0';
-        gfx_draw_string(8, by + 3, title_buf, 0x00FFD250, 0, 1);
-
-        char desc_buf[48];
-        strncpy(desc_buf, sec->description, 27);
-        desc_buf[27] = '\0';
-        gfx_draw_string(8, by + 12, desc_buf, 0x00D2D2DC, 0, 1);
-    } else {
-        int by = 536;
-        int bh = 44;
-
-        gfx_draw_beveled_rect(10, by, 460, bh, 0x0016121C, 0x00463C55, 0x000A080E);
-
-        char title_buf[80];
-        snprintf(title_buf, sizeof(title_buf), "%s: %s", sec->name, sec->title);
-        gfx_draw_string(20, by + 6, title_buf, 0x00FFD250, 0, 1);
-        gfx_draw_string(20, by + 22, sec->description, 0x00D2D2DC, 0, 1);
     }
 }
 
@@ -641,48 +634,50 @@ static void DrawButtons(void) {
     if (s_is_qvga) {
         const char *diff_names[] = { "MORTAL", "ELDER", "ANCIENT" };
         const char *snd_text = g_game.is_muted ? "MUTE" : "SOUND";
-        int by = 290;
-        int bh = 26;
+        int by = 272;
+        int bh = 22;
         int bw = (s_screen_w - 16) / 4;
 
         /* Button 1: NEW GAME */
         int x1 = 4;
         gfx_draw_beveled_rect(x1, by, bw, bh, 0x00282D3C, 0x005A6482, 0x0014161E);
-        gfx_draw_string_centered(x1, by + 8, bw, "NEW", 0x00FFFFFF, 0, 1);
+        gfx_draw_string_centered(x1, by + 6, bw, "NEW", 0x00FFFFFF, 0, 1);
 
         /* Button 2: AI DIFF */
         int x2 = x1 + bw + 2;
         gfx_draw_beveled_rect(x2, by, bw, bh, 0x00282D3C, 0x005A6482, 0x0014161E);
-        gfx_draw_string_centered(x2, by + 8, bw, diff_names[g_game.difficulty % 3], 0x00FFFFFF, 0, 1);
+        gfx_draw_string_centered(x2, by + 6, bw, diff_names[g_game.difficulty % 3], 0x00FFFFFF, 0, 1);
 
         /* Button 3: TOME OF LORE */
         int x3 = x2 + bw + 2;
         gfx_draw_beveled_rect(x3, by, bw, bh, 0x00411E50, 0x008246A0, 0x001E0F28);
-        gfx_draw_string_centered(x3, by + 8, bw, "TOME", 0x00FFE678, 0, 1);
+        gfx_draw_string_centered(x3, by + 6, bw, "TOME", 0x00FFE678, 0, 1);
 
         /* Button 4: SOUND */
         int x4 = x3 + bw + 2;
         gfx_draw_beveled_rect(x4, by, s_screen_w - 4 - x4, bh, 0x00282D3C, 0x005A6482, 0x0014161E);
-        gfx_draw_string_centered(x4, by + 8, s_screen_w - 4 - x4, snd_text, 0x00FFFFFF, 0, 1);
+        gfx_draw_string_centered(x4, by + 6, s_screen_w - 4 - x4, snd_text, 0x00FFFFFF, 0, 1);
     } else {
         const char *diff_names[] = { "AI: MORTAL", "AI: ELDER", "AI: ANCIENT" };
         const char *snd_text = g_game.is_muted ? "SOUND: OFF" : "SOUND: ON";
+        int by = 540;
+        int bh = 44;
 
         /* Button 1: NEW GAME */
-        gfx_draw_beveled_rect(10, 586, 112, 46, 0x00282D3C, 0x005A6482, 0x0014161E);
-        gfx_draw_string_centered(10, 586 + 15, 112, "NEW GAME", 0x00FFFFFF, 0, 1);
+        gfx_draw_beveled_rect(10, by, 112, bh, 0x00282D3C, 0x005A6482, 0x0014161E);
+        gfx_draw_string_centered(10, by + 14, 112, "NEW GAME", 0x00FFFFFF, 0, 1);
 
         /* Button 2: AI DIFF */
-        gfx_draw_beveled_rect(126, 586, 112, 46, 0x00282D3C, 0x005A6482, 0x0014161E);
-        gfx_draw_string_centered(126, 586 + 15, 112, diff_names[g_game.difficulty % 3], 0x00FFFFFF, 0, 1);
+        gfx_draw_beveled_rect(126, by, 112, bh, 0x00282D3C, 0x005A6482, 0x0014161E);
+        gfx_draw_string_centered(126, by + 14, 112, diff_names[g_game.difficulty % 3], 0x00FFFFFF, 0, 1);
 
         /* Button 3: TOME OF LORE */
-        gfx_draw_beveled_rect(242, 586, 120, 46, 0x00411E50, 0x008246A0, 0x001E0F28);
-        gfx_draw_string_centered(242, 586 + 15, 120, "TOME OF LORE", 0x00FFE678, 0, 1);
+        gfx_draw_beveled_rect(242, by, 120, bh, 0x00411E50, 0x008246A0, 0x001E0F28);
+        gfx_draw_string_centered(242, by + 14, 120, "TOME OF LORE", 0x00FFE678, 0, 1);
 
         /* Button 4: SOUND */
-        gfx_draw_beveled_rect(366, 586, 104, 46, 0x00282D3C, 0x005A6482, 0x0014161E);
-        gfx_draw_string_centered(366, 586 + 15, 104, snd_text, 0x00FFFFFF, 0, 1);
+        gfx_draw_beveled_rect(366, by, 104, bh, 0x00282D3C, 0x005A6482, 0x0014161E);
+        gfx_draw_string_centered(366, by + 14, 104, snd_text, 0x00FFFFFF, 0, 1);
     }
 }
 
@@ -691,7 +686,6 @@ void Render_DrawFrame(void) {
     DrawBoard();
     DrawHUD();
     DrawGrimoire();
-    DrawDeityBanner();
     DrawButtons();
 }
 
@@ -704,29 +698,29 @@ void Render_DrawTomeModal(int selected_secret) {
 
     if (s_is_qvga) {
         /* Modal dialog frame */
-        gfx_draw_beveled_rect(4, 4, s_screen_w - 8, s_screen_h - 8, 0x001A1424, 0x00645078, 0x000D0A12);
-        gfx_draw_rect(6, 6, s_screen_w - 12, s_screen_h - 12, 0x00FFD700);
+        gfx_draw_beveled_rect(4, 26, s_screen_w - 8, 266, 0x001A1424, 0x00645078, 0x000D0A12);
+        gfx_draw_rect(6, 28, s_screen_w - 12, 262, 0x00FFD700);
 
         /* Header */
-        gfx_draw_string_centered(4, 10, s_screen_w - 8, "THE TOME OF FORBIDDEN LORE", 0x00FFD700, 0, 1);
+        gfx_draw_string_centered(4, 30, s_screen_w - 8, "THE TOME OF FORBIDDEN LORE", 0x00FFD700, 0, 1);
 
         /* Deity Showcase Card */
-        gfx_draw_beveled_rect(8, 22, s_screen_w - 16, 184, 0x00221A30, 0x00504064, 0x00110D18);
+        gfx_draw_beveled_rect(8, 42, s_screen_w - 16, 150, 0x00221A30, 0x00504064, 0x00110D18);
 
         /* Glowing Deity Orb */
         COLORREF cr = sec->color;
         uint32_t col = ((GetRValue(cr)) << 16) | ((GetGValue(cr)) << 8) | (GetBValue(cr));
         int orb_cx = s_screen_w / 2;
-        gfx_fill_circle(orb_cx, 44, 18, col);
-        gfx_fill_circle(orb_cx - 5, 44 - 5, 5, 0x00FFFFFF);
+        gfx_fill_circle(orb_cx, 60, 14, col);
+        gfx_fill_circle(orb_cx - 4, 60 - 4, 4, 0x00FFFFFF);
 
         /* Name & Title */
-        gfx_draw_string_centered(8, 66, s_screen_w - 16, sec->name, 0x00FFD250, 0, 1);
-        gfx_draw_string_centered(8, 76, s_screen_w - 16, sec->title, 0x00E0D0FF, 0, 1);
+        gfx_draw_string_centered(8, 78, s_screen_w - 16, sec->name, 0x00FFD250, 0, 1);
+        gfx_draw_string_centered(8, 88, s_screen_w - 16, sec->title, 0x00E0D0FF, 0, 1);
 
         /* Arcane Description Box */
-        gfx_draw_beveled_rect(12, 88, s_screen_w - 24, 84, 0x00161020, 0x003A3048, 0x000B0810);
-        gfx_draw_string(16, 92, "COSMIC LAW:", 0x00FFD700, 0, 1);
+        gfx_draw_beveled_rect(12, 100, s_screen_w - 24, 72, 0x00161020, 0x003A3048, 0x000B0810);
+        gfx_draw_string(16, 104, "COSMIC LAW:", 0x00FFD700, 0, 1);
 
         char desc_line1[32], desc_line2[32], desc_line3[32];
         memset(desc_line1, 0, sizeof(desc_line1));
@@ -739,61 +733,61 @@ void Render_DrawTomeModal(int selected_secret) {
         if (strlen(sec->description) > 52) {
             strncpy(desc_line3, sec->description + 52, 26);
         }
-        gfx_draw_string(16, 104, desc_line1, 0x00E6E6FA, 0, 1);
-        if (desc_line2[0]) gfx_draw_string(16, 114, desc_line2, 0x00E6E6FA, 0, 1);
-        if (desc_line3[0]) gfx_draw_string(16, 124, desc_line3, 0x00E6E6FA, 0, 1);
+        gfx_draw_string(16, 114, desc_line1, 0x00E6E6FA, 0, 1);
+        if (desc_line2[0]) gfx_draw_string(16, 124, desc_line2, 0x00E6E6FA, 0, 1);
+        if (desc_line3[0]) gfx_draw_string(16, 134, desc_line3, 0x00E6E6FA, 0, 1);
 
         char snd_buf[48];
         snprintf(snd_buf, sizeof(snd_buf), "AUDIO: %s", sec->sound_file);
         snd_buf[26] = '\0';
-        gfx_draw_string(16, 142, snd_buf, 0x008CA0DC, 0, 1);
+        gfx_draw_string(16, 154, snd_buf, 0x008CA0DC, 0, 1);
 
         /* Counter */
         char page_str[32];
         snprintf(page_str, sizeof(page_str), "Elder Secret %d of %d", selected_secret + 1, CHAR_MAX_COUNT);
         gfx_draw_string_centered(8, 178, s_screen_w - 16, page_str, 0x00C8C8DC, 0, 1);
 
-        /* Navigation Buttons: Y = 212..252 */
+        /* Navigation Buttons: Y = 198..234 */
         /* Prev: X = 10..74 */
-        gfx_draw_beveled_rect(10, 212, 64, 40, 0x00282D3C, 0x005A6482, 0x0014161E);
-        gfx_draw_string_centered(10, 212 + 15, 64, "< PREV", 0x00FFFFFF, 0, 1);
+        gfx_draw_beveled_rect(10, 198, 64, 36, 0x00282D3C, 0x005A6482, 0x0014161E);
+        gfx_draw_string_centered(10, 198 + 13, 64, "< PREV", 0x00FFFFFF, 0, 1);
 
         /* Invoke: X = 78..162 */
-        gfx_draw_beveled_rect(78, 212, 84, 40, 0x00781E28, 0x00D24650, 0x003C0F14);
-        gfx_draw_string_centered(78, 212 + 15, 84, "INVOKE", 0x00FFD700, 0, 1);
+        gfx_draw_beveled_rect(78, 198, 84, 36, 0x00781E28, 0x00D24650, 0x003C0F14);
+        gfx_draw_string_centered(78, 198 + 13, 84, "INVOKE", 0x00FFD700, 0, 1);
 
         /* Next: X = 166..230 */
-        gfx_draw_beveled_rect(166, 212, 64, 40, 0x00282D3C, 0x005A6482, 0x0014161E);
-        gfx_draw_string_centered(166, 212 + 15, 64, "NEXT >", 0x00FFFFFF, 0, 1);
+        gfx_draw_beveled_rect(166, 198, 64, 36, 0x00282D3C, 0x005A6482, 0x0014161E);
+        gfx_draw_string_centered(166, 198 + 13, 64, "NEXT >", 0x00FFFFFF, 0, 1);
 
-        /* Resume: X = 30..210, Y = 258..298 */
-        gfx_draw_beveled_rect(30, 258, 180, 40, 0x001E283C, 0x00465A82, 0x000F141E);
-        gfx_draw_string_centered(30, 258 + 15, 180, "RESUME DUEL", 0x00E6E6FA, 0, 1);
+        /* Resume: X = 24..216, Y = 240..276 */
+        gfx_draw_beveled_rect(24, 240, 192, 36, 0x001E283C, 0x00465A82, 0x000F141E);
+        gfx_draw_string_centered(24, 240 + 13, 192, "RESUME DUEL", 0x00E6E6FA, 0, 1);
     } else {
         /* Modal dialog frame */
-        gfx_draw_beveled_rect(10, 10, 460, 620, 0x001A1424, 0x00645078, 0x000D0A12);
-        gfx_draw_rect(14, 14, 452, 612, 0x00FFD700);
+        gfx_draw_beveled_rect(10, 54, 460, 530, 0x001A1424, 0x00645078, 0x000D0A12);
+        gfx_draw_rect(14, 58, 452, 522, 0x00FFD700);
 
         /* Header */
-        gfx_draw_string_centered(10, 26, 460, "THE TOME OF FORBIDDEN LORE", 0x00FFD700, 0, 2);
-        gfx_draw_string_centered(10, 52, 460, "Awaken an Ancient One into the Dual Realm", 0x00C8C8DC, 0, 1);
+        gfx_draw_string_centered(10, 66, 460, "THE TOME OF FORBIDDEN LORE", 0x00FFD700, 0, 2);
+        gfx_draw_string_centered(10, 88, 460, "Awaken an Ancient One into the Dual Realm", 0x00C8C8DC, 0, 1);
 
         /* Deity Showcase Card */
-        gfx_draw_beveled_rect(24, 80, 432, 380, 0x00221A30, 0x00504064, 0x00110D18);
+        gfx_draw_beveled_rect(24, 108, 432, 330, 0x00221A30, 0x00504064, 0x00110D18);
 
         /* Glowing Deity Orb */
         COLORREF cr = sec->color;
         uint32_t col = ((GetRValue(cr)) << 16) | ((GetGValue(cr)) << 8) | (GetBValue(cr));
-        gfx_fill_circle(240, 140, 40, col);
-        gfx_fill_circle(240 - 12, 140 - 12, 10, 0x00FFFFFF);
+        gfx_fill_circle(240, 160, 36, col);
+        gfx_fill_circle(240 - 10, 160 - 10, 9, 0x00FFFFFF);
 
         /* Name & Title */
-        gfx_draw_string_centered(24, 196, 432, sec->name, 0x00FFD250, 0, 2);
-        gfx_draw_string_centered(24, 222, 432, sec->title, 0x00E0D0FF, 0, 1);
+        gfx_draw_string_centered(24, 206, 432, sec->name, 0x00FFD250, 0, 2);
+        gfx_draw_string_centered(24, 230, 432, sec->title, 0x00E0D0FF, 0, 1);
 
         /* Arcane Description Box */
-        gfx_draw_beveled_rect(36, 250, 408, 140, 0x00161020, 0x003A3048, 0x000B0810);
-        gfx_draw_string(48, 266, "COSMIC LAW:", 0x00FFD700, 0, 1);
+        gfx_draw_beveled_rect(36, 252, 408, 126, 0x00161020, 0x003A3048, 0x000B0810);
+        gfx_draw_string(48, 264, "COSMIC LAW:", 0x00FFD700, 0, 1);
 
         /* Description with simple wrapping */
         char desc_line1[48], desc_line2[48];
@@ -803,36 +797,36 @@ void Render_DrawTomeModal(int selected_secret) {
         if (strlen(sec->description) > 46) {
             strncpy(desc_line2, sec->description + 46, 46);
         }
-        gfx_draw_string(48, 290, desc_line1, 0x00E6E6FA, 0, 1);
+        gfx_draw_string(48, 284, desc_line1, 0x00E6E6FA, 0, 1);
         if (desc_line2[0]) {
-            gfx_draw_string(48, 308, desc_line2, 0x00E6E6FA, 0, 1);
+            gfx_draw_string(48, 302, desc_line2, 0x00E6E6FA, 0, 1);
         }
 
         char snd_buf[64];
         snprintf(snd_buf, sizeof(snd_buf), "THEME AUDIO: %s", sec->sound_file);
-        gfx_draw_string(48, 350, snd_buf, 0x008CA0DC, 0, 1);
+        gfx_draw_string(48, 336, snd_buf, 0x008CA0DC, 0, 1);
 
         /* Counter */
         char page_str[32];
         snprintf(page_str, sizeof(page_str), "Elder Secret %d of %d", selected_secret + 1, CHAR_MAX_COUNT);
-        gfx_draw_string_centered(24, 430, 432, page_str, 0x00C8C8DC, 0, 1);
+        gfx_draw_string_centered(24, 398, 432, page_str, 0x00C8C8DC, 0, 1);
 
-        /* Navigation Buttons */
+        /* Navigation Buttons: Y = 448..494 */
         /* Prev */
-        gfx_draw_beveled_rect(24, 480, 110, 50, 0x00282D3C, 0x005A6482, 0x0014161E);
-        gfx_draw_string_centered(24, 480 + 17, 110, "< PREV", 0x00FFFFFF, 0, 2);
+        gfx_draw_beveled_rect(24, 448, 110, 46, 0x00282D3C, 0x005A6482, 0x0014161E);
+        gfx_draw_string_centered(24, 448 + 15, 110, "< PREV", 0x00FFFFFF, 0, 2);
 
         /* Invoke */
-        gfx_draw_beveled_rect(144, 480, 192, 50, 0x00781E28, 0x00D24650, 0x003C0F14);
-        gfx_draw_string_centered(144, 480 + 17, 192, "INVOKE DEITY", 0x00FFD700, 0, 2);
+        gfx_draw_beveled_rect(144, 448, 192, 46, 0x00781E28, 0x00D24650, 0x003C0F14);
+        gfx_draw_string_centered(144, 448 + 15, 192, "INVOKE DEITY", 0x00FFD700, 0, 2);
 
         /* Next */
-        gfx_draw_beveled_rect(346, 480, 110, 50, 0x00282D3C, 0x005A6482, 0x0014161E);
-        gfx_draw_string_centered(346, 480 + 17, 110, "NEXT >", 0x00FFFFFF, 0, 2);
+        gfx_draw_beveled_rect(346, 448, 110, 46, 0x00282D3C, 0x005A6482, 0x0014161E);
+        gfx_draw_string_centered(346, 448 + 15, 110, "NEXT >", 0x00FFFFFF, 0, 2);
 
-        /* Resume */
-        gfx_draw_beveled_rect(120, 550, 240, 50, 0x001E283C, 0x00465A82, 0x000F141E);
-        gfx_draw_string_centered(120, 550 + 17, 240, "RESUME DUEL", 0x00E6E6FA, 0, 2);
+        /* Resume: Y = 506..552 */
+        gfx_draw_beveled_rect(120, 506, 240, 46, 0x001E283C, 0x00465A82, 0x000F141E);
+        gfx_draw_string_centered(120, 506 + 15, 240, "RESUME DUEL", 0x00E6E6FA, 0, 2);
     }
 }
 
