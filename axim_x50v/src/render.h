@@ -5,8 +5,8 @@
 #include <stdint.h>
 #include <stdbool.h>
 
-#define SCREEN_WIDTH  480
-#define SCREEN_HEIGHT 640
+#define SCREEN_MAX_W 640
+#define SCREEN_MAX_H 640
 
 #define BTN_NONE     0
 #define BTN_NEW_GAME 1
@@ -23,6 +23,10 @@ void Render_Cleanup(void);
 void Render_DrawFrame(void);
 void Render_DrawTomeModal(int selected_secret);
 void Render_Flip(HWND hwnd);
+
+int  Render_GetWidth(void);
+int  Render_GetHeight(void);
+BOOL Render_IsQVGA(void);
 
 BOOL Render_GetCellFromPoint(int x, int y, int *out_r, int *out_c);
 int  Render_GetButtonClicked(int x, int y);

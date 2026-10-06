@@ -19,11 +19,13 @@ An authentic, high-resolution port of **Ftaghn: Cosmic Horror Ataxx** targeting 
 
 ---
 
-## Screen Layout (480×640 VGA Portrait)
+## Screen Layout (Dynamic 240×320 QVGA & 480×640 VGA Portrait)
 
-1. **Board Section (Top, Y: 8–380)**:
-   - **7×7 Grid**: Large 52×52 pixel cells (364×364 active area).
-   - **9×9 Grid**: 42×42 pixel cells (378×378 active area) when Shudde M'ell expands cosmic space.
+The engine automatically queries device metrics (`SM_CXSCREEN`, `SM_CYSCREEN`) and scales all board cells, piece graphics, HUD elements, grimoire scroll, and touch toolbar to fit the screen 100% edge-to-edge whether the Dell Axim X50v is running in native VGA (480×640) or Windows Mobile 2003SE standard QVGA mode (240×320).
+
+1. **Board Section (Top)**:
+   - **QVGA 240×320**: 7×7 grid uses 26×26 px cells (182×182 px area); 9×9 uses 22×22 px cells (198×198 px area).
+   - **VGA 480×640**: 7×7 grid uses 52×52 px cells (364×364 px area); 9×9 uses 42×42 px cells (378×378 px area).
    - Glowing 3D orbs with specular highlights, monolith obstacles with glowing red eye slits, cyan frozen ice blocks (Rhan-Tegoth), present boxes with gold ribbons (Santa Egg), pulsing gold selection auras, and move indicators (green dot for clone, amber ring for leap).
 2. **Faction HUD Banner (Y: 384–432)**:
    - Left: Crimson Cult score, orb icon, and player name.

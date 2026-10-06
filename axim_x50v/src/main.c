@@ -39,7 +39,11 @@ static void ApplyPocketPCFullScreen(HWND hwnd) {
         }
         FreeLibrary(hAyg);
     }
-    SetWindowPos(hwnd, HWND_TOP, 0, 0, SCREEN_WIDTH, SCREEN_HEIGHT, SWP_SHOWWINDOW);
+    int sw = GetSystemMetrics(SM_CXSCREEN);
+    int sh = GetSystemMetrics(SM_CYSCREEN);
+    if (sw <= 0) sw = 240;
+    if (sh <= 0) sh = 320;
+    SetWindowPos(hwnd, HWND_TOP, 0, 0, sw, sh, SWP_SHOWWINDOW);
 }
 
 static void UpdateScreen(HWND hwnd) {
@@ -54,43 +58,84 @@ static void UpdateScreen(HWND hwnd) {
 static BOOL HandleTomeClick(HWND hwnd, int x, int y) {
     if (!s_tome_open) return FALSE;
 
-    /* Prev Button: X: 24..134, Y: 480..530 */
-    if (x >= 24 && x <= 134 && y >= 480 && y <= 530) {
-        s_tome_index = (s_tome_index - 1 + CHAR_MAX_COUNT) % CHAR_MAX_COUNT;
-        Sound_PlaySFX("select.wav");
-        UpdateScreen(hwnd);
-        return TRUE;
-    }
+    if (Render_IsQVGA()) {
+        /* Prev Button: X: 10..74, Y: 212..252 */
+        if (x >= 10 && x <= 74 && y >= 212 && y <= 252) {
+            s_tome_index = (s_tome_index - 1 + CHAR_MAX_COUNT) % CHAR_MAX_COUNT;
+            Sound_PlaySFX("select.wav");
+            UpdateScreen(hwnd);
+            return TRUE;
+        }
 
-    /* Invoke Button: X: 144..336, Y: 480..530 */
-    if (x >= 144 && x <= 336 && y >= 480 && y <= 530) {
-        Game_ApplySecret((enum CharType)s_tome_index, CELL_RED);
-        s_tome_open = FALSE;
-        UpdateScreen(hwnd);
-        return TRUE;
-    }
+        /* Invoke Button: X: 78..162, Y: 212..252 */
+        if (x >= 78 && x <= 162 && y >= 212 && y <= 252) {
+            Game_ApplySecret((enum CharType)s_tome_index, CELL_RED);
+            s_tome_open = FALSE;
+            UpdateScreen(hwnd);
+            return TRUE;
+        }
 
-    /* Next Button: X: 346..456, Y: 480..530 */
-    if (x >= 346 && x <= 456 && y >= 480 && y <= 530) {
-        s_tome_index = (s_tome_index + 1) % CHAR_MAX_COUNT;
-        Sound_PlaySFX("select.wav");
-        UpdateScreen(hwnd);
-        return TRUE;
-    }
+        /* Next Button: X: 166..230, Y: 212..252 */
+        if (x >= 166 && x <= 230 && y >= 212 && y <= 252) {
+            s_tome_index = (s_tome_index + 1) % CHAR_MAX_COUNT;
+            Sound_PlaySFX("select.wav");
+            UpdateScreen(hwnd);
+            return TRUE;
+        }
 
-    /* Resume Button: X: 120..360, Y: 550..600 */
-    if (x >= 120 && x <= 360 && y >= 550 && y <= 600) {
-        s_tome_open = FALSE;
-        Sound_PlaySFX("select.wav");
-        UpdateScreen(hwnd);
-        return TRUE;
-    }
+        /* Resume Button: X: 30..210, Y: 258..298 */
+        if (x >= 30 && x <= 210 && y >= 258 && y <= 298) {
+            s_tome_open = FALSE;
+            Sound_PlaySFX("select.wav");
+            UpdateScreen(hwnd);
+            return TRUE;
+        }
 
-    /* Click outside modal closes it */
-    if (x < 10 || x > 470 || y < 10 || y > 630) {
-        s_tome_open = FALSE;
-        UpdateScreen(hwnd);
-        return TRUE;
+        /* Click outside modal closes it */
+        if (x < 4 || x > 236 || y < 4 || y > 316) {
+            s_tome_open = FALSE;
+            UpdateScreen(hwnd);
+            return TRUE;
+        }
+    } else {
+        /* Prev Button: X: 24..134, Y: 480..530 */
+        if (x >= 24 && x <= 134 && y >= 480 && y <= 530) {
+            s_tome_index = (s_tome_index - 1 + CHAR_MAX_COUNT) % CHAR_MAX_COUNT;
+            Sound_PlaySFX("select.wav");
+            UpdateScreen(hwnd);
+            return TRUE;
+        }
+
+        /* Invoke Button: X: 144..336, Y: 480..530 */
+        if (x >= 144 && x <= 336 && y >= 480 && y <= 530) {
+            Game_ApplySecret((enum CharType)s_tome_index, CELL_RED);
+            s_tome_open = FALSE;
+            UpdateScreen(hwnd);
+            return TRUE;
+        }
+
+        /* Next Button: X: 346..456, Y: 480..530 */
+        if (x >= 346 && x <= 456 && y >= 480 && y <= 530) {
+            s_tome_index = (s_tome_index + 1) % CHAR_MAX_COUNT;
+            Sound_PlaySFX("select.wav");
+            UpdateScreen(hwnd);
+            return TRUE;
+        }
+
+        /* Resume Button: X: 120..360, Y: 550..600 */
+        if (x >= 120 && x <= 360 && y >= 550 && y <= 600) {
+            s_tome_open = FALSE;
+            Sound_PlaySFX("select.wav");
+            UpdateScreen(hwnd);
+            return TRUE;
+        }
+
+        /* Click outside modal closes it */
+        if (x < 10 || x > 470 || y < 10 || y > 630) {
+            s_tome_open = FALSE;
+            UpdateScreen(hwnd);
+            return TRUE;
+        }
     }
 
     return TRUE; /* Consumed inside modal */
@@ -324,12 +369,17 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPWSTR lpCmdLin
         return 1;
     }
 
+    int sw = GetSystemMetrics(SM_CXSCREEN);
+    int sh = GetSystemMetrics(SM_CYSCREEN);
+    if (sw <= 0) sw = 240;
+    if (sh <= 0) sh = 320;
+
     HWND hwnd = CreateWindowExW(
         0,
         L"FtaghnAximClass",
         L"Ftaghn - Cosmic Horror Ataxx",
         WS_VISIBLE,
-        0, 0, SCREEN_WIDTH, SCREEN_HEIGHT,
+        0, 0, sw, sh,
         NULL, NULL, hInstance, NULL
     );
 

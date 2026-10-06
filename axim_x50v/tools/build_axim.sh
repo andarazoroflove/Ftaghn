@@ -30,6 +30,9 @@ with zipfile.ZipFile(zip_path, 'w', zipfile.ZIP_DEFLATED) as zipf:
 print('Created zip:', zip_path)
 "
     fi
+    mkdir -p axim_x50v/\!Ataxx
+    cp -f axim_x50v/release/ftaghn-axim-x50v-StorageCard.zip axim_x50v/\!Ataxx/ftaghn-axim-x50v-StorageCard.zip
+    cp -f axim_x50v/release/Ftaghn.exe axim_x50v/\!Ataxx/Ftaghn.exe
     echo "=== Dell Axim X50v build and packaging complete! ==="
     exit 0
 fi
